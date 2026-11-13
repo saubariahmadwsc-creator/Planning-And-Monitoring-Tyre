@@ -1,0 +1,3230 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planning and Monitoring Tyre — Rekap, Planning, Stock & Monitoring Ban</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS for Multi-Sheet Excel Export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            navy: {
+              850: '#131c31',
+              900: '#0f172a',
+              950: '#090d16'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    .safe-pb { padding-bottom: env(safe-area-inset-bottom, 1rem); }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- IMAGE LIGHTBOX MODAL -->
+  <div id="lightbox-modal" class="fixed inset-0 z-[90] bg-slate-950/90 hidden items-center justify-center p-4" onclick="closeLightbox()">
+    <div class="relative max-w-3xl w-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between px-4 py-3 bg-slate-800 text-white">
+        <span id="lightbox-title" class="text-sm font-semibold truncate">Preview Foto Ban</span>
+        <button onclick="closeLightbox()" class="p-1.5 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-2 flex items-center justify-center bg-black max-h-[75vh]">
+        <img id="lightbox-img" src="" alt="Foto Ban" class="max-h-[70vh] w-auto object-contain rounded-lg" />
+      </div>
+      <div id="lightbox-meta" class="px-4 py-2.5 bg-slate-800/80 text-xs text-slate-300 flex flex-wrap gap-3"></div>
+    </div>
+  </div>
+
+  <!-- WEBCAM CAPTURE MODAL -->
+  <div id="camera-modal" class="fixed inset-0 z-[90] bg-slate-950/90 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 text-white rounded-2xl max-w-lg w-full overflow-hidden border border-slate-700 shadow-2xl">
+      <div class="flex items-center justify-between px-4 py-3 bg-slate-800 border-b border-slate-700">
+        <div class="flex items-center gap-2">
+          <i data-lucide="camera" class="w-5 h-5 text-amber-400"></i>
+          <h3 class="font-semibold text-sm">Ambil Foto Ban Real-Time</h3>
+        </div>
+        <button onclick="closeCameraModal()" class="p-1.5 rounded-lg hover:bg-slate-700 text-slate-300">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-4 flex flex-col items-center">
+        <div class="relative w-full aspect-[4/3] bg-black rounded-xl overflow-hidden border border-slate-700">
+          <video id="camera-video" autoplay playsinline class="w-full h-full object-cover"></video>
+        </div>
+        <p class="text-xs text-slate-400 mt-2 text-center">Arahkan kamera ke telapak / dinding ban, lalu tekan tombol Jepret.</p>
+        <div class="flex items-center gap-3 mt-4 w-full">
+          <button onclick="closeCameraModal()" class="flex-1 py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-medium">Batal</button>
+          <button onclick="captureFromCamera()" class="flex-1 py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 shadow-lg">
+            <i data-lucide="aperture" class="w-4 h-4"></i> Jepret Foto
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STOCK ADJUSTMENT MODAL (+ TAMBAH / - KURANGI STOCK) -->
+  <div id="stock-adjust-modal" class="fixed inset-0 z-[90] bg-slate-950/80 hidden items-center justify-center p-4" onclick="closeStockAdjustModal()">
+    <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200" onclick="event.stopPropagation()">
+      <div id="stock-adjust-header" class="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
+        <div>
+          <span id="stock-adjust-badge" class="text-[11px] font-bold uppercase tracking-wider text-amber-400">Penyesuaian Gudang</span>
+          <h3 id="stock-adjust-title" class="text-base font-extrabold mt-0.5">Tambah / Kurangi Stock Ban</h3>
+        </div>
+        <button onclick="closeStockAdjustModal()" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form onsubmit="submitStockAdjustment(event)" class="p-5 space-y-4">
+        <input type="hidden" id="adjust-stock-id" />
+        <input type="hidden" id="adjust-stock-type" />
+
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1 text-xs">
+          <div class="font-extrabold text-slate-900 text-sm" id="adjust-item-name">-</div>
+          <div class="text-slate-600" id="adjust-item-meta">-</div>
+          <div class="pt-1 flex items-center justify-between border-t border-slate-200/80 mt-1.5">
+            <span class="text-slate-500 font-medium">Stock Tersedia Saat Ini:</span>
+            <span class="font-extrabold text-slate-900 text-sm"><span id="adjust-current-qty">0</span> Pcs</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5" id="adjust-qty-label">Jumlah Ban (Pcs) <span class="text-red-500">*</span></label>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="stepAdjustQty(-1)" class="w-11 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 font-extrabold text-slate-800 text-lg flex items-center justify-center border border-slate-300">-</button>
+            <input id="adjust-qty-input" type="number" min="1" value="1" required class="flex-1 h-11 px-4 rounded-xl border-2 border-slate-300 focus:border-amber-500 text-center font-extrabold text-base text-slate-900" />
+            <button type="button" onclick="stepAdjustQty(1)" class="w-11 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 font-extrabold text-slate-800 text-lg flex items-center justify-center border border-slate-300">+</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">Keterangan / Tujuan Unit / No. PO</label>
+          <input id="adjust-note-input" type="text" placeholder="Contoh: Masuk PO #104 / Dipasang ke unit DT 01" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 text-xs" />
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-2">
+          <button type="button" onclick="closeStockAdjustModal()" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold">Batal</button>
+          <button type="submit" id="adjust-submit-btn" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-lg transition">
+            Simpan Perubahan Stock
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- CONFIRMATION MODAL (No browser confirm()) -->
+  <div id="confirm-modal" class="fixed inset-0 z-[95] bg-slate-950/75 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+      <div class="flex items-center gap-3 text-red-600 mb-3">
+        <div class="p-2.5 bg-red-100 rounded-xl"><i data-lucide="alert-triangle" class="w-6 h-6"></i></div>
+        <h3 id="confirm-title" class="text-lg font-bold text-slate-900">Konfirmasi</h3>
+      </div>
+      <p id="confirm-message" class="text-sm text-slate-600 mb-6">Apakah Anda yakin?</p>
+      <div class="flex justify-end gap-2.5">
+        <button onclick="resolveConfirm(false)" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold">Batal</button>
+        <button onclick="resolveConfirm(true)" class="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold shadow">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUTH / LOGIN MODAL -->
+  <div id="auth-modal" class="fixed inset-0 z-[85] bg-slate-950/80 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200">
+      <div class="bg-slate-900 text-white px-6 py-5 flex items-center justify-between">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Akses Sistem Planning and Monitoring Tyre</span>
+          <h3 class="text-lg font-bold mt-0.5">Ganti Akun / Verifikasi Role</h3>
+        </div>
+        <button onclick="closeAuthModal()" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1.5">Email Pengguna</label>
+          <input id="login-email-input" type="email" placeholder="contoh: saubariahmad.wsc@gmail.com" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm" />
+          <p class="text-[11px] text-slate-500 mt-1">Email pemilik <strong class="text-slate-700">saubariahmad.wsc@gmail.com</strong> otomatis mendapatkan <strong>Full Akses</strong>.</p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1.5">Nama Tampilan / Inspector</label>
+          <input id="login-name-input" type="text" placeholder="Nama Mekanik / Admin" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm" />
+        </div>
+        <button onclick="submitEmailLogin()" class="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm shadow transition">
+          Masuk dengan Email Ini
+        </button>
+
+        <div class="relative flex py-1 items-center">
+          <div class="flex-grow border-t border-slate-200"></div>
+          <span class="flex-shrink mx-3 text-xs text-slate-400 font-medium">Akses Cepat / Mode Simulasi</span>
+          <div class="flex-grow border-t border-slate-200"></div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-2">
+          <button onclick="quickSwitchRole('saubariahmad.wsc@gmail.com', 'Saubari Ahmad (Owner)')" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-left transition">
+            <div>
+              <div class="text-xs font-bold text-slate-900">Pemilik — Full Akses</div>
+              <div class="text-[11px] text-slate-600">saubariahmad.wsc@gmail.com</div>
+            </div>
+            <span class="px-2 py-0.5 rounded-md bg-amber-500 text-slate-950 text-[10px] font-extrabold">OWNER</span>
+          </button>
+          <button onclick="quickSwitchRole('mekanik.lapangan@wsc.co.id', 'Mekanik / Inspector')" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-left transition">
+            <div>
+              <div class="text-xs font-bold text-slate-900">Editor — Akses Terbatas</div>
+              <div class="text-[11px] text-slate-500">Tambah/update data ban, foto & mutasi stock</div>
+            </div>
+            <span class="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[10px] font-bold">EDITOR</span>
+          </button>
+          <button onclick="quickSwitchRole('viewer.project@wsc.co.id', 'Project Viewer')" class="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-left transition">
+            <div>
+              <div class="text-xs font-bold text-slate-900">Viewer — Akses Pelihat</div>
+              <div class="text-[11px] text-slate-500">Hanya lihat dashboard, rekap, stock & download Excel</div>
+            </div>
+            <span class="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 text-[10px] font-bold">VIEWER</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="bg-slate-900 text-white sticky top-0 z-40 border-b border-slate-800 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
+      <!-- Brand -->
+      <div class="flex items-center gap-2.5 shrink-0">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shadow-md shrink-0">
+          <i data-lucide="disc" class="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5]"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-extrabold text-sm sm:text-base tracking-tight leading-none">Planning and <span class="text-amber-400">Monitoring Tyre</span></h1>
+            <span id="cloud-status-badge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Cloud Sync
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400 hidden xl:block">Monitoring, Rekap, Stock & Planning Ban Alat Berat</p>
+        </div>
+      </div>
+
+      <!-- Desktop Navigation -->
+      <nav class="hidden lg:flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/70">
+        <button onclick="switchTab('dashboard')" data-nav="dashboard" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard
+        </button>
+        <button onclick="switchTab('rekap')" data-nav="rekap" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+          <i data-lucide="clipboard-list" class="w-4 h-4"></i> Rekap Unit
+        </button>
+        <button onclick="switchTab('stock')" data-nav="stock" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+          <i data-lucide="package" class="w-4 h-4"></i> Stock Ban
+          <span id="nav-stock-badge" class="px-1.5 py-0.2 rounded-full bg-slate-700 text-amber-300 text-[10px] font-extrabold">0</span>
+        </button>
+        <button onclick="switchTab('input')" data-nav="input" id="desktop-nav-input" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i> Input Ban
+        </button>
+        <button onclick="switchTab('master')" data-nav="master" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+          <i data-lucide="database" class="w-4 h-4"></i> Alat (134)
+        </button>
+        <button onclick="switchTab('settings')" data-nav="settings" class="nav-btn px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+          <i data-lucide="shield-check" class="w-4 h-4"></i> Akses/Drive
+        </button>
+      </nav>
+
+      <!-- User & Export Actions -->
+      <div class="flex items-center gap-2 shrink-0">
+        <button onclick="exportToExcel()" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow transition" title="Download Rekap Excel">
+          <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Excel</span>
+        </button>
+
+        <button onclick="openAuthModal()" class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition text-left">
+          <div class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs shrink-0" id="user-avatar">SA</div>
+          <div class="hidden md:block leading-tight">
+            <div id="user-display-email" class="text-[11px] font-semibold text-white max-w-[140px] truncate">saubariahmad.wsc@gmail.com</div>
+            <div id="user-role-badge" class="text-[10px] font-bold text-amber-400">PEMILIK (FULL AKSES)</div>
+          </div>
+          <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 pb-24 lg:pb-10">
+
+    <!-- ==================== TAB 1: DASHBOARD & PLANNING ==================== -->
+    <section id="tab-dashboard" class="tab-section space-y-6">
+      <!-- Header Banner -->
+      <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-5 sm:p-6 text-white shadow-xl border border-slate-700/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-semibold mb-2">
+            <i data-lucide="activity" class="w-3.5 h-3.5"></i> Real-Time Tyre Health, Warehouse Stock & Planning
+          </div>
+          <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight">Dashboard Monitoring, Stock & Planning Ban</h2>
+          <p class="text-xs sm:text-sm text-slate-300 mt-1">Pantau umur ban aktual, prioritas penggantian unit, dan ketersediaan stok ban di gudang secara real-time.</p>
+        </div>
+        <div class="flex flex-wrap gap-2.5">
+          <button onclick="startNewInput()" id="btn-hero-input" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg transition">
+            <i data-lucide="plus" class="w-4 h-4 stroke-[2.5]"></i> Input / Update Ban
+          </button>
+          <button onclick="switchTab('stock')" class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg transition">
+            <i data-lucide="package" class="w-4 h-4"></i> Kelola Stock Ban
+          </button>
+          <button onclick="exportToExcel()" class="px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-semibold text-xs sm:text-sm flex items-center gap-2 border border-slate-600 transition">
+            <i data-lucide="download" class="w-4 h-4"></i> Excel
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Cards (6 Cards Responsive Grid) -->
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+        <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between text-slate-500 mb-2">
+            <span class="text-xs font-semibold">Total Alat</span>
+            <div class="p-2 rounded-xl bg-slate-100 text-slate-700"><i data-lucide="truck" class="w-4 h-4"></i></div>
+          </div>
+          <div class="text-2xl font-extrabold text-slate-900" id="kpi-total-master">134</div>
+          <div class="text-[11px] text-slate-500 mt-1"><span id="kpi-monitored-units" class="font-bold text-slate-700">0</span> unit terdata</div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between text-slate-500 mb-2">
+            <span class="text-xs font-semibold">Ban Terpasang</span>
+            <div class="p-2 rounded-xl bg-blue-50 text-blue-600"><i data-lucide="disc" class="w-4 h-4"></i></div>
+          </div>
+          <div class="text-2xl font-extrabold text-slate-900" id="kpi-total-tires">0</div>
+          <div class="text-[11px] text-slate-500 mt-1">Seluruh unit aktif</div>
+        </div>
+
+        <div onclick="switchTab('stock')" class="cursor-pointer bg-white rounded-2xl p-4 border-2 border-indigo-200 hover:border-indigo-400 shadow-sm transition">
+          <div class="flex items-center justify-between text-indigo-600 mb-2">
+            <span class="text-xs font-bold">Stock Gudang</span>
+            <div class="p-2 rounded-xl bg-indigo-100 text-indigo-600"><i data-lucide="package" class="w-4 h-4"></i></div>
+          </div>
+          <div class="flex items-baseline gap-1.5">
+            <span class="text-2xl font-extrabold text-indigo-700" id="kpi-warehouse-stock">0</span>
+            <span class="text-xs font-bold text-indigo-500">Pcs</span>
+          </div>
+          <div class="text-[11px] text-indigo-600 font-medium mt-1"><span id="kpi-warehouse-variants" class="font-bold">0</span> varian ban tersedia</div>
+        </div>
+
+        <div onclick="filterPlanningStatus('CRITICAL')" class="cursor-pointer bg-white rounded-2xl p-4 border-2 border-red-200 hover:border-red-400 shadow-sm transition">
+          <div class="flex items-center justify-between text-red-600 mb-2">
+            <span class="text-xs font-bold">Wajib Ganti</span>
+            <div class="p-2 rounded-xl bg-red-100 text-red-600"><i data-lucide="alert-octagon" class="w-4 h-4"></i></div>
+          </div>
+          <div class="flex items-baseline gap-1.5">
+            <span class="text-2xl font-extrabold text-red-600" id="kpi-critical-units">0</span>
+            <span class="text-xs font-bold text-red-500">Unit</span>
+          </div>
+          <div class="text-[11px] text-red-600 font-medium mt-1"><span id="kpi-critical-tires" class="font-bold">0</span> ban kritis (≥100%)</div>
+        </div>
+
+        <div onclick="filterPlanningStatus('WARNING')" class="cursor-pointer bg-white rounded-2xl p-4 border-2 border-amber-200 hover:border-amber-400 shadow-sm transition">
+          <div class="flex items-center justify-between text-amber-600 mb-2">
+            <span class="text-xs font-bold">Mendekati Ganti</span>
+            <div class="p-2 rounded-xl bg-amber-100 text-amber-600"><i data-lucide="alert-triangle" class="w-4 h-4"></i></div>
+          </div>
+          <div class="flex items-baseline gap-1.5">
+            <span class="text-2xl font-extrabold text-amber-600" id="kpi-warning-units">0</span>
+            <span class="text-xs font-bold text-amber-500">Unit</span>
+          </div>
+          <div class="text-[11px] text-amber-700 font-medium mt-1"><span id="kpi-warning-tires" class="font-bold">0</span> ban (80-99%)</div>
+        </div>
+
+        <div onclick="filterPlanningStatus('OK')" class="cursor-pointer bg-white rounded-2xl p-4 border border-emerald-200 hover:border-emerald-400 shadow-sm transition">
+          <div class="flex items-center justify-between text-emerald-600 mb-2">
+            <span class="text-xs font-bold">Kondisi Aman</span>
+            <div class="p-2 rounded-xl bg-emerald-100 text-emerald-600"><i data-lucide="check-circle-2" class="w-4 h-4"></i></div>
+          </div>
+          <div class="flex items-baseline gap-1.5">
+            <span class="text-2xl font-extrabold text-emerald-600" id="kpi-ok-units">0</span>
+            <span class="text-xs font-bold text-emerald-500">Unit</span>
+          </div>
+          <div class="text-[11px] text-emerald-700 font-medium mt-1"><span id="kpi-ok-tires" class="font-bold">0</span> ban layak (&lt;80%)</div>
+        </div>
+      </div>
+
+      <!-- Planning Priority Alert Table -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="calendar-clock" class="w-5 h-5 text-amber-500"></i>
+              Rekap Planning Penggantian Ban (Prioritas Unit & Ban)
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">Otomatis menghitung persentase pemakaian ban terhadap standar interval HM/KM serta mencocokkan ketersediaan stock gudang.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="planning-status-filter" onchange="renderDashboard()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-slate-50">
+              <option value="ALL">Semua Status Planning</option>
+              <option value="CRITICAL">🔴 Wajib Ganti (≥100% / Kritis)</option>
+              <option value="WARNING">🟡 Mendekati Ganti (80% - 99%)</option>
+              <option value="OK">🟢 Kondisi Aman (&lt;80%)</option>
+            </select>
+            <input id="planning-search" oninput="renderDashboard()" type="text" placeholder="Cari Kode Proyek / Jenis..." class="px-3 py-2 rounded-xl border border-slate-300 text-xs w-44 sm:w-56" />
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-500">
+                <th class="py-3 px-4">Code Proyek</th>
+                <th class="py-3 px-4">Jenis Unit & Merk</th>
+                <th class="py-3 px-4">Posisi Ban</th>
+                <th class="py-3 px-4">Spesifikasi Ban</th>
+                <th class="py-3 px-4">Stock Gudang</th>
+                <th class="py-3 px-4">Umur / Standar</th>
+                <th class="py-3 px-4">Progress</th>
+                <th class="py-3 px-4">Status</th>
+                <th class="py-3 px-4 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="planning-table-body" class="divide-y divide-slate-100 text-xs">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Reference Standard Interval Table -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="ruler" class="w-5 h-5 text-blue-600"></i>
+              Standar Interval Planning Penggantian Ban
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">Acuan umur ban (Hour Meter / Kilometer) berdasarkan Jenis Unit, Ukuran, Merk, dan Tread.</p>
+          </div>
+          <button onclick="switchTab('settings')" class="text-xs font-semibold text-blue-600 hover:underline">Kelola Standar →</button>
+        </div>
+        <div class="overflow-x-auto max-h-80">
+          <table class="w-full text-left border-collapse">
+            <thead class="sticky top-0 bg-slate-100 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-600">
+              <tr>
+                <th class="py-2.5 px-4">Jenis Unit</th>
+                <th class="py-2.5 px-4">Ukuran</th>
+                <th class="py-2.5 px-4">Merk</th>
+                <th class="py-2.5 px-4">Tread</th>
+                <th class="py-2.5 px-4 text-right">Interval</th>
+                <th class="py-2.5 px-4">Skala</th>
+              </tr>
+            </thead>
+            <tbody id="standard-table-preview" class="divide-y divide-slate-100 text-xs">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: REKAP DATA UNIT & BAN ==================== -->
+    <section id="tab-rekap" class="tab-section hidden space-y-5">
+      <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-lg sm:text-xl font-extrabold text-slate-900">Rekap Kondisi Ban Per Unit</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Klik kartu unit untuk melihat detail seluruh posisi ban, foto dokumentasi, atau melakukan update HM/KM.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2.5">
+          <div class="relative flex-1 sm:flex-initial">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input id="rekap-search" oninput="renderRekapList()" type="text" placeholder="Cari Code Proyek, Asset, Merk..." class="pl-9 pr-3 py-2 rounded-xl border border-slate-300 text-xs w-full sm:w-60" />
+          </div>
+          <select id="rekap-jenis-filter" onchange="renderRekapList()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium bg-slate-50">
+            <option value="">Semua Jenis Unit</option>
+          </select>
+          <button onclick="exportToExcel()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Download Excel
+          </button>
+        </div>
+      </div>
+
+      <!-- List of Monitored Units -->
+      <div id="rekap-units-container" class="space-y-4">
+        <!-- Rendered via JS -->
+      </div>
+    </section>
+
+    <!-- ==================== TAB 3: STOCK BAN (GUDANG & MUTASI) ==================== -->
+    <section id="tab-stock" class="tab-section hidden space-y-6">
+      <!-- Stock Top Summary Header -->
+      <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-5 sm:p-6 text-white shadow-xl border border-slate-700/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold mb-2">
+            <i data-lucide="package" class="w-3.5 h-3.5"></i> Manajemen Gudang & Inventaris Ban
+          </div>
+          <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight">Stock Ban & Riwayat Mutasi Masuk/Keluar</h2>
+          <p class="text-xs sm:text-sm text-slate-300 mt-1">Kelola persediaan ban berdasarkan Jenis Ban, Merk Ban, Ukuran Ban, dan Tahun Pembuatan (DOT).</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="bg-slate-800/90 border border-slate-700 px-4 py-3 rounded-2xl text-right">
+            <div class="text-[11px] text-slate-400 font-semibold uppercase">Total Stock Tersedia</div>
+            <div class="text-2xl font-extrabold text-amber-400"><span id="stock-header-total-qty">0</span> <span class="text-xs font-bold text-slate-300">Pcs</span></div>
+          </div>
+          <button onclick="exportToExcel()" class="px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg transition">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Export Stock Excel
+          </button>
+        </div>
+      </div>
+
+      <!-- Add New Stock Item Card (Visible for OWNER & EDITOR) -->
+      <div id="add-stock-card" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center font-extrabold">
+              <i data-lucide="package-plus" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-extrabold text-slate-900">Tambah Item Stock Ban Baru</h3>
+              <p class="text-[11px] text-slate-500">Jika kombinasi Jenis, Merk, Ukuran & Tahun Pembuatan sudah ada, stok akan otomatis digabungkan.</p>
+            </div>
+          </div>
+        </div>
+
+        <form id="add-stock-form" onsubmit="handleAddNewStock(event)" class="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3.5 items-end">
+          <!-- Jenis Ban -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Jenis Ban (Tread) <span class="text-red-500">*</span></label>
+            <input list="stock-jenis-list" id="stock-input-jenis" required placeholder="Rimba / Cacing..." class="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold focus:ring-2 focus:ring-amber-500" />
+            <datalist id="stock-jenis-list"></datalist>
+          </div>
+
+          <!-- Merk Ban -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Merk Ban <span class="text-red-500">*</span></label>
+            <input list="stock-merk-list" id="stock-input-merk" required placeholder="Bridgestone / GT..." class="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold focus:ring-2 focus:ring-amber-500" />
+            <datalist id="stock-merk-list"></datalist>
+          </div>
+
+          <!-- Ukuran Ban -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Ukuran Ban <span class="text-red-500">*</span></label>
+            <input list="stock-ukuran-list" id="stock-input-ukuran" required placeholder="1.100 R20 / 265/65 R17..." class="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold focus:ring-2 focus:ring-amber-500" />
+            <datalist id="stock-ukuran-list"></datalist>
+          </div>
+
+          <!-- Tahun Pembuatan -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Tahun Pembuatan <span class="text-red-500">*</span></label>
+            <input id="stock-input-tahun" type="number" min="2015" max="2035" value="2026" required placeholder="2026" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-extrabold text-slate-900 focus:ring-2 focus:ring-amber-500" />
+          </div>
+
+          <!-- Jumlah Awal -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Jumlah Stock (Pcs) <span class="text-red-500">*</span></label>
+            <input id="stock-input-qty" type="number" min="1" value="1" required class="w-full px-3 py-2.5 rounded-xl border-2 border-emerald-400 bg-emerald-50/30 text-xs font-extrabold text-emerald-900 focus:ring-2 focus:ring-emerald-500" />
+          </div>
+
+          <!-- Lokasi / Catatan + Submit -->
+          <div class="flex flex-col gap-1.5">
+            <label class="block text-xs font-bold text-slate-700">Lokasi Rak / Ket.</label>
+            <div class="flex gap-2">
+              <input id="stock-input-lokasi" type="text" placeholder="Rak A1 / PO" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-xs" />
+              <button type="submit" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shrink-0 shadow transition flex items-center gap-1">
+                <i data-lucide="plus" class="w-4 h-4 stroke-[2.5]"></i> Simpan
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Stock Inventory Table -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              <i data-lucide="layers" class="w-5 h-5 text-indigo-600"></i>
+              Daftar Persediaan Stock Ban
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">Gunakan tombol <strong>+ Tambah</strong> untuk barang masuk atau <strong>- Kurangi</strong> saat ban dikeluarkan/dipasang ke unit.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="relative">
+              <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input id="stock-search" oninput="renderStockTab()" type="text" placeholder="Cari merk, ukuran, tahun..." class="pl-8 pr-3 py-2 rounded-xl border border-slate-300 text-xs w-48 sm:w-56" />
+            </div>
+            <select id="stock-filter-jenis" onchange="renderStockTab()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-slate-50">
+              <option value="">Semua Jenis Ban</option>
+              <option value="Rimba">Rimba</option>
+              <option value="Cacing">Cacing</option>
+              <option value="Semi Rimba">Semi Rimba</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-900 text-white text-[11px] font-bold uppercase">
+                <th class="py-3 px-4">No</th>
+                <th class="py-3 px-4">Jenis Ban</th>
+                <th class="py-3 px-4">Merk Ban</th>
+                <th class="py-3 px-4">Ukuran Ban</th>
+                <th class="py-3 px-4 text-center">Tahun Pembuatan</th>
+                <th class="py-3 px-4">Lokasi / Ket.</th>
+                <th class="py-3 px-4 text-center">Stock Tersedia</th>
+                <th class="py-3 px-4 text-right">Tambah / Kurangi Stock</th>
+              </tr>
+            </thead>
+            <tbody id="stock-table-body" class="divide-y divide-slate-100 text-xs">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Stock Mutation History Logs -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between">
+          <div>
+            <h3 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              <i data-lucide="history" class="w-5 h-5 text-slate-600"></i>
+              Riwayat Mutasi Stock (Masuk & Keluar)
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">Catatan otomatis setiap penambahan dan pengurangan stock ban beserta keterangan dan petugas.</p>
+          </div>
+          <span id="stock-logs-count" class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">0 Transaksi</span>
+        </div>
+
+        <div class="overflow-x-auto max-h-96">
+          <table class="w-full text-left border-collapse">
+            <thead class="sticky top-0 bg-slate-100 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-600">
+              <tr>
+                <th class="py-2.5 px-4">Waktu</th>
+                <th class="py-2.5 px-4">Transaksi</th>
+                <th class="py-2.5 px-4">Spesifikasi Ban (Jenis / Merk / Ukuran / Tahun)</th>
+                <th class="py-2.5 px-4 text-center">Jumlah</th>
+                <th class="py-2.5 px-4 text-center">Sisa Stock</th>
+                <th class="py-2.5 px-4">Keterangan</th>
+                <th class="py-2.5 px-4">User</th>
+              </tr>
+            </thead>
+            <tbody id="stock-logs-body" class="divide-y divide-slate-100 text-xs">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 4: INPUT / UPDATE BAN UNIT ==================== -->
+    <section id="tab-input" class="tab-section hidden space-y-6">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="bg-slate-900 text-white px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <span class="text-[11px] font-bold uppercase tracking-wider text-amber-400">Form Inspeksi & Pemasangan Ban</span>
+            <h2 id="form-page-title" class="text-lg font-extrabold">Input / Update Data Ban Unit</h2>
+          </div>
+          <button onclick="resetUnitForm()" class="self-start sm:self-auto px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700">
+            Reset Form Baru
+          </button>
+        </div>
+
+        <form id="unit-tire-form" onsubmit="saveUnitTireData(event)" class="p-4 sm:p-6 space-y-6">
+          <input type="hidden" id="edit-record-id" value="" />
+
+          <!-- Step 1: Informasi Unit -->
+          <div class="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200 space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center text-xs font-black">1</span>
+                Informasi Unit (Auto-Fill dari Code Proyek)
+              </h3>
+              <span class="text-[11px] text-slate-500 hidden sm:inline">Pilih Code Proyek untuk mengisi otomatis</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <!-- Code Proyek Searchable -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Code Proyek <span class="text-red-500">*</span></label>
+                <input list="project-code-list" id="input-kode-proyek" oninput="handleProjectCodeAutoFill(this.value)" onchange="handleProjectCodeAutoFill(this.value)" required placeholder="Ketik/Pilih misal: DT 01, MG 01, WSC 06..." class="w-full px-3.5 py-2.5 rounded-xl border-2 border-amber-400 bg-white focus:ring-2 focus:ring-amber-500 text-sm font-bold text-slate-900" />
+                <datalist id="project-code-list"></datalist>
+                <p class="text-[11px] text-slate-500 mt-1">Ketik kode proyek, Kode Asset, Jenis & Merk otomatis terisi.</p>
+              </div>
+
+              <!-- Kode Asset -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Kode Asset <span class="text-red-500">*</span></label>
+                <input id="input-kode-asset" type="text" required placeholder="Otomatis terisi..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-100 text-sm font-semibold text-slate-800" />
+              </div>
+
+              <!-- Jenis Unit -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Jenis Unit <span class="text-red-500">*</span></label>
+                <input id="input-jenis-unit" type="text" required placeholder="Otomatis terisi..." onchange="handleUnitTypeTireCount(this.value)" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-100 text-sm font-semibold text-slate-800" />
+              </div>
+
+              <!-- Merk Unit -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Merk Unit <span class="text-red-500">*</span></label>
+                <input id="input-merk-unit" type="text" required placeholder="Otomatis terisi..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-100 text-sm font-semibold text-slate-800" />
+              </div>
+
+              <!-- Jumlah Ban -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Jumlah Ban <span class="text-red-500">*</span></label>
+                <div class="flex items-center gap-2">
+                  <input id="input-jumlah-ban" type="number" min="1" max="30" value="6" required onchange="generateTireSlots(parseInt(this.value || 1))" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-900" />
+                  <button type="button" onclick="generateTireSlots(parseInt(document.getElementById('input-jumlah-ban').value || 1))" class="px-3 py-2.5 rounded-xl bg-slate-800 text-white text-xs font-semibold shrink-0 hover:bg-slate-700">Set Slot</button>
+                </div>
+              </div>
+
+              <!-- HM / KM Terbaru Unit -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">HM / KM Terbaru Unit <span class="text-red-500">*</span></label>
+                <div class="flex items-center gap-2">
+                  <input id="input-unit-hm" type="number" min="0" step="any" required placeholder="Contoh: 12500" oninput="syncUnitHmToTires(this.value)" class="w-full px-3.5 py-2.5 rounded-xl border-2 border-blue-400 bg-white text-sm font-bold text-blue-900" />
+                  <span id="unit-scale-badge" class="px-2.5 py-2.5 rounded-xl bg-blue-100 text-blue-800 text-xs font-extrabold shrink-0">HM/KM</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: Detail Kondisi Setiap Ban -->
+          <div class="space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center text-xs font-black">2</span>
+                Detail Kondisi & Foto Setiap Ban (<span id="slot-count-label">6</span> Ban)
+              </h3>
+              <div class="text-xs text-slate-500">
+                Gunakan tombol <strong class="text-slate-700">"Salin ke Semua Ban"</strong> untuk menyalin spek tanpa menyalin foto.
+              </div>
+            </div>
+
+            <div id="tire-slots-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Tire cards generated dynamically -->
+            </div>
+          </div>
+
+          <!-- Submit Footer -->
+          <div class="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-end gap-3">
+            <button type="button" onclick="switchTab('rekap')" class="w-full sm:w-auto px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm">Batal</button>
+            <button type="submit" id="btn-submit-unit" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg transition">
+              <i data-lucide="save" class="w-4 h-4"></i> Simpan Rekap Ban Unit
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 5: DATABASE MASTER ALAT (134 UNIT) ==================== -->
+    <section id="tab-master" class="tab-section hidden space-y-5">
+      <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-lg sm:text-xl font-extrabold text-slate-900">Database Master Alat (134 Unit)</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Data dari file Excel terintegrasi langsung. Klik <strong>"Input Ban"</strong> pada unit manapun untuk langsung mengisi rekap ban.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <input id="master-search" oninput="renderMasterTable()" type="text" placeholder="Cari Kode Asset, Proyek, Jenis, Merk..." class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs w-full sm:w-64" />
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-900 text-white text-[11px] font-bold uppercase">
+                <th class="py-3 px-4">No</th>
+                <th class="py-3 px-4">Code Proyek</th>
+                <th class="py-3 px-4">Kode Asset</th>
+                <th class="py-3 px-4">Jenis Unit</th>
+                <th class="py-3 px-4">Merk / Tipe Unit</th>
+                <th class="py-3 px-4 text-center">Jml Ban</th>
+                <th class="py-3 px-4">Status Rekap</th>
+                <th class="py-3 px-4 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="master-table-body" class="divide-y divide-slate-100 text-xs">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 6: PENGATURAN AKSES, STANDAR & GOOGLE DRIVE BACKUP ==================== -->
+    <section id="tab-settings" class="tab-section hidden space-y-6">
+      <!-- Cloud & Google Drive Info Card -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div class="flex items-center gap-3">
+            <div class="p-3 rounded-2xl bg-blue-50 text-blue-600"><i data-lucide="cloud" class="w-6 h-6"></i></div>
+            <div>
+              <h2 class="text-base sm:text-lg font-extrabold text-slate-900">Penyimpanan Cloud Real-Time & Backup Google Drive</h2>
+              <p class="text-xs text-slate-500">Pemilik Utama: <strong class="text-slate-800">saubariahmad.wsc@gmail.com</strong> — Data unit, stock ban & mutasi tersimpan online real-time.</p>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="exportBackupJSON()" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 shadow">
+              <i data-lucide="download-cloud" class="w-4 h-4"></i> Backup JSON (Simpan ke Google Drive)
+            </button>
+            <label id="import-json-label" class="cursor-pointer px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5 shadow">
+              <i data-lucide="upload-cloud" class="w-4 h-4"></i> Restore / Import JSON
+              <input type="file" accept=".json" onchange="importBackupJSON(event)" class="hidden" />
+            </label>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <div class="font-bold text-slate-800 mb-1 flex items-center gap-1.5"><i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-emerald-600"></i> Sinkronisasi Real-Time</div>
+            <p class="text-slate-600 leading-relaxed">Setiap input kondisi ban maupun mutasi stok masuk/keluar langsung tersimpan otomatis di database cloud real-time sehingga seluruh tim melihat data terbaru.</p>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <div class="font-bold text-slate-800 mb-1 flex items-center gap-1.5"><i data-lucide="hard-drive" class="w-3.5 h-3.5 text-blue-600"></i> Arsip Google Drive Pemilik</div>
+            <p class="text-slate-600 leading-relaxed">Gunakan tombol <strong>Backup JSON</strong> atau <strong>Excel</strong> untuk menyimpan arsip fisik (termasuk stock & mutasi) ke Google Drive akun <strong>saubariahmad.wsc@gmail.com</strong>.</p>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <div class="font-bold text-slate-800 mb-1 flex items-center gap-1.5"><i data-lucide="shield" class="w-3.5 h-3.5 text-amber-600"></i> Keamanan Hak Akses</div>
+            <p class="text-slate-600 leading-relaxed">Hanya <strong>saubariahmad.wsc@gmail.com</strong> yang memiliki kendali penuh untuk menambah/mengubah izin user (Editor / Viewer) serta menghapus data unit atau item stok.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Access Control Management (Owner Only) -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              <i data-lucide="users" class="w-5 h-5 text-amber-500"></i>
+              Manajemen Hak Akses Pengguna
+            </h3>
+            <p class="text-xs text-slate-500">Pemilik (<strong>saubariahmad.wsc@gmail.com</strong>) mengatur email mana saja yang memiliki Akses Terbatas (Editor) atau Akses Pelihat (Viewer).</p>
+          </div>
+        </div>
+
+        <!-- Add User Form (Visible to Owner) -->
+        <form id="add-user-permission-form" onsubmit="addUserPermission(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <input id="perm-email" type="email" required placeholder="Email user (misal: mekanik@gmail.com)" class="sm:col-span-2 px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white" />
+          <select id="perm-role" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-white">
+            <option value="EDITOR">Akses Terbatas (Update Data Ban & Stock)</option>
+            <option value="VIEWER">Akses Pelihat (Hanya Lihat)</option>
+          </select>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow">
+            + Tambah Izin User
+          </button>
+        </form>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-100 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-600">
+                <th class="py-2.5 px-4">Email Pengguna</th>
+                <th class="py-2.5 px-4">Level Akses</th>
+                <th class="py-2.5 px-4">Keterangan Izin</th>
+                <th class="py-2.5 px-4 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="permissions-table-body" class="divide-y divide-slate-100 text-xs">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Planning Interval Standards Editor -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 class="text-base font-extrabold text-slate-900">Pengaturan Standar Interval Penggantian Ban</h3>
+            <p class="text-xs text-slate-500">Pemilik dapat menambahkan atau mengubah acuan umur HM/KM penggantian ban.</p>
+          </div>
+        </div>
+
+        <form id="add-standard-form" onsubmit="addPlanningStandard(event)" class="grid grid-cols-2 sm:grid-cols-6 gap-2.5 bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <input id="std-jenis" type="text" required placeholder="Jenis Unit (misal: Sarana)" class="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white" />
+          <input id="std-ukuran" type="text" required placeholder="Ukuran (misal: 265/65 R17)" class="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white" />
+          <input id="std-merk" type="text" required placeholder="Merk (misal: Bridgestone)" class="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white" />
+          <input id="std-tread" type="text" required placeholder="Tread (Rimba/Cacing)" class="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white" />
+          <input id="std-interval" type="number" required placeholder="Interval (60000)" class="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white" />
+          <div class="flex gap-1.5">
+            <select id="std-skala" class="w-full px-2 py-2 rounded-xl border border-slate-300 text-xs bg-white font-semibold">
+              <option value="Hour Meter">Hour Meter</option>
+              <option value="Kilometer">Kilometer</option>
+            </select>
+            <button type="submit" class="px-3 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs shrink-0">+</button>
+          </div>
+        </form>
+
+        <div class="overflow-x-auto max-h-96">
+          <table class="w-full text-left border-collapse">
+            <thead class="sticky top-0 bg-slate-100 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-600">
+              <tr>
+                <th class="py-2.5 px-4">Jenis Unit</th>
+                <th class="py-2.5 px-4">Ukuran</th>
+                <th class="py-2.5 px-4">Merk</th>
+                <th class="py-2.5 px-4">Tread</th>
+                <th class="py-2.5 px-4 text-right">Interval</th>
+                <th class="py-2.5 px-4">Skala</th>
+                <th class="py-2.5 px-4 text-right">Hapus</th>
+              </tr>
+            </thead>
+            <tbody id="settings-standards-body" class="divide-y divide-slate-100 text-xs">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MOBILE BOTTOM NAVIGATION BAR (6 Responsive Items) -->
+  <nav class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-900 text-slate-300 border-t border-slate-800 safe-pb shadow-2xl">
+    <div class="grid grid-cols-6 h-16">
+      <button onclick="switchTab('dashboard')" data-nav="dashboard" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 text-[10px] font-semibold">
+        <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+        <span>Dashboard</span>
+      </button>
+      <button onclick="switchTab('rekap')" data-nav="rekap" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 text-[10px] font-semibold">
+        <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+        <span>Rekap</span>
+      </button>
+      <button onclick="switchTab('stock')" data-nav="stock" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 text-[10px] font-semibold relative">
+        <i data-lucide="package" class="w-4 h-4"></i>
+        <span>Stock</span>
+      </button>
+      <button onclick="startNewInput()" data-nav="input" id="mobile-nav-input" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 text-[10px] font-bold text-amber-400">
+        <div class="w-8 h-8 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center -mt-3 shadow-lg border-2 border-slate-900">
+          <i data-lucide="plus" class="w-4 h-4 stroke-[2.5]"></i>
+        </div>
+        <span>Input</span>
+      </button>
+      <button onclick="switchTab('master')" data-nav="master" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 text-[10px] font-semibold">
+        <i data-lucide="database" class="w-4 h-4"></i>
+        <span>Alat</span>
+      </button>
+      <button onclick="switchTab('settings')" data-nav="settings" class="nav-btn-mobile flex flex-col items-center justify-center gap-1 text-[10px] font-semibold">
+        <i data-lucide="shield-check" class="w-4 h-4"></i>
+        <span>Akses</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- APPLICATION LOGIC & FIREBASE REAL-TIME SYNC -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // =========================================================================
+    // 1. MASTER DATA & CONSTANTS
+    // =========================================================================
+    const OWNER_EMAIL = "saubariahmad.wsc@gmail.com";
+
+    // 134 Master Equipment Database from Excel
+    const MASTER_EQUIPMENT = [
+      {"Kode Asset": "3AD006", "Kode Proyek": "AD 01", "Jenis": "ASPHALT DISTRIBUTOR", "Merk": "HINO / FM 260 JD"},
+      {"Kode Asset": "3AD007", "Kode Proyek": "AD 02", "Jenis": "ASPHALT DISTRIBUTOR", "Merk": "Secmair - Hino / FM 280 JD"},
+      {"Kode Asset": "3SCS01", "Kode Proyek": "ASCS 01", "Jenis": "ASPHALT CHIP SYNCHRONOUS SEALER", "Merk": "XCMG / XTF1405C"},
+      {"Kode Asset": "4BL003", "Kode Proyek": "BHL 01", "Jenis": "BACKHOE LOADER", "Merk": "CASE / 570 T"},
+      {"Kode Asset": "4BL005", "Kode Proyek": "BHL 03", "Jenis": "BACKHOE LOADER", "Merk": "CASE / 570 T"},
+      {"Kode Asset": "4BL008", "Kode Proyek": "BHL 04", "Jenis": "BACKHOE LOADER", "Merk": "XCMG / WZ 30 - 25"},
+      {"Kode Asset": "4BL009", "Kode Proyek": "BHL 05", "Jenis": "BACKHOE LOADER", "Merk": "XCMG / WZ 30 - 25"},
+      {"Kode Asset": "7TM002", "Kode Proyek": "BR 01", "Jenis": "BABY ROLLER", "Merk": "AMMANN / ARW 65"},
+      {"Kode Asset": "7TM003", "Kode Proyek": "BR 02", "Jenis": "BABY ROLLER", "Merk": "MEIWA / MSR 7 M"},
+      {"Kode Asset": "7TM004", "Kode Proyek": "BR 03", "Jenis": "BABY ROLLER", "Merk": "MEIWA / MSR 7 M"},
+      {"Kode Asset": "7TM005", "Kode Proyek": "BR 04", "Jenis": "BABY ROLLER", "Merk": "MEIWA / MSR 7 M"},
+      {"Kode Asset": "7TM006", "Kode Proyek": "BR 05", "Jenis": "BABY ROLLER", "Merk": "MEIWA / MSR 7 M"},
+      {"Kode Asset": "5DT004", "Kode Proyek": "DT 01", "Jenis": "DUMP TRUCK - HAULING", "Merk": "HINO / FM 1J"},
+      {"Kode Asset": "5DT002", "Kode Proyek": "DT 02", "Jenis": "DUMP TRUCK - HAULING", "Merk": "HINO / FM 1J"},
+      {"Kode Asset": "5DT028", "Kode Proyek": "DT 03", "Jenis": "DUMP TRUCK - CHIP SPREADER", "Merk": "HINO / FM 260 JD"},
+      {"Kode Asset": "5DT052", "Kode Proyek": "DT 04", "Jenis": "DUMP TRUCK - CHIP SPREADER", "Merk": "HINO / FM 280 JD"},
+      {"Kode Asset": "5DT048", "Kode Proyek": "DT 05", "Jenis": "DUMP TRUCK - CHIP SPREADER", "Merk": "HINO / FM 280 JD"},
+      {"Kode Asset": "5DT015", "Kode Proyek": "DT 06", "Jenis": "DUMP TRUCK - HAULING", "Merk": "UD TRUCKS / CWA 260 M"},
+      {"Kode Asset": "5DT024", "Kode Proyek": "DT 08", "Jenis": "DUMP TRUCK - CHIP SPREADER", "Merk": "HINO / FM 260 JD"},
+      {"Kode Asset": "5DT025", "Kode Proyek": "DT 09", "Jenis": "DUMP TRUCK - HAULING", "Merk": "HINO / FM 260 JD"},
+      {"Kode Asset": "5DT026", "Kode Proyek": "DT 10", "Jenis": "DUMP TRUCK - CHIP SPREADER", "Merk": "HINO / FM 260 JD"},
+      {"Kode Asset": "5DT027", "Kode Proyek": "DT 11", "Jenis": "DUMP TRUCK - HAULING", "Merk": "HINO / FM 260 JD"},
+      {"Kode Asset": "5DT003", "Kode Proyek": "DT 12", "Jenis": "DUMP TRUCK - HAULING", "Merk": "HINO / FM 1J"},
+      {"Kode Asset": "5DT045", "Kode Proyek": "DT 28", "Jenis": "DUMP TRUCK - CHIP SPREADER", "Merk": "HINO / FM 280 JD"},
+      {"Kode Asset": "5DT034", "Kode Proyek": "DT 34", "Jenis": "DUMP TRUCK - HAULING", "Merk": "HINO / FM 260 JD"},
+      {"Kode Asset": "5FT003", "Kode Proyek": "FT 02", "Jenis": "FUEL TRUCK", "Merk": "HINO / FG 235 JJ"},
+      {"Kode Asset": "5TH004", "Kode Proyek": "LBT 01", "Jenis": "LOWBED TRUCK", "Merk": "FOTON / AUMAN R 3343"},
+      {"Kode Asset": "5LD001", "Kode Proyek": "LD 01", "Jenis": "LIGHT TRUCK - DOUBLE CABIN", "Merk": "HINO / 300 SERIES 136 HDX 6.8"},
+      {"Kode Asset": "5LD002", "Kode Proyek": "LD 02", "Jenis": "LIGHT TRUCK - DOUBLE CABIN", "Merk": "HINO / 300 SERIES 136 HDX 6.8"},
+      {"Kode Asset": "5LD003", "Kode Proyek": "LD 03", "Jenis": "LIGHT TRUCK - DOUBLE CABIN", "Merk": "HINO / 300 SERIES 136 HDX 6.8"},
+      {"Kode Asset": "5LD004", "Kode Proyek": "LD 04", "Jenis": "LIGHT TRUCK - DOUBLE CABIN", "Merk": "HINO / 300 SERIES 136 HDX 6.8"},
+      {"Kode Asset": "5LD005", "Kode Proyek": "LD 05", "Jenis": "LIGHT TRUCK - DOUBLE CABIN", "Merk": "MITSUBISHI / CANTER FE 75 SHDX N (4X2) M/T"},
+      {"Kode Asset": "5DT042", "Kode Proyek": "LT 02", "Jenis": "LIGHT TRUCK", "Merk": "Mitsubishi / FE SHD-X K"},
+      {"Kode Asset": "5DT039", "Kode Proyek": "LT 03", "Jenis": "LIGHT TRUCK", "Merk": "Mitsubishi / FE SHD-X K"},
+      {"Kode Asset": "5DT043", "Kode Proyek": "LT 04", "Jenis": "LIGHT TRUCK", "Merk": "Mitsubishi / FE SHD-X K"},
+      {"Kode Asset": "5DT023", "Kode Proyek": "LT 05", "Jenis": "LIGHT TRUCK", "Merk": "HINO / Dutro 130 HD - 300"},
+      {"Kode Asset": "5DT020", "Kode Proyek": "LT 07", "Jenis": "LIGHT TRUCK", "Merk": "HINO / Dutro 130 HD - 300"},
+      {"Kode Asset": "4MG016", "Kode Proyek": "MG 01", "Jenis": "MOTOR GRADER", "Merk": "Komatsu / GD 705-5"},
+      {"Kode Asset": "4MG017", "Kode Proyek": "MG 02", "Jenis": "MOTOR GRADER", "Merk": "CATERPILLAR / 160 K"},
+      {"Kode Asset": "4MG026", "Kode Proyek": "MG 03", "Jenis": "MOTOR GRADER", "Merk": "CATERPILLAR / 120"},
+      {"Kode Asset": "4MG008", "Kode Proyek": "MG 07", "Jenis": "MOTOR GRADER", "Merk": "Komatsu / GD 705 A - 4"},
+      {"Kode Asset": "4MG011", "Kode Proyek": "MG 08", "Jenis": "MOTOR GRADER", "Merk": "CATERPILLAR / 120 K"},
+      {"Kode Asset": "4MG012", "Kode Proyek": "MG 09", "Jenis": "MOTOR GRADER", "Merk": "CATERPILLAR / 14M"},
+      {"Kode Asset": "4MG018", "Kode Proyek": "MG 10", "Jenis": "MOTOR GRADER", "Merk": "CATERPILLAR / 160 K"},
+      {"Kode Asset": "4MG019", "Kode Proyek": "MG 11", "Jenis": "MOTOR GRADER", "Merk": "SEM / 922"},
+      {"Kode Asset": "4MG020", "Kode Proyek": "MG 12", "Jenis": "MOTOR GRADER", "Merk": "LiuGong / CLG 4230 D"},
+      {"Kode Asset": "4MG022", "Kode Proyek": "MG 13", "Jenis": "MOTOR GRADER", "Merk": "CATERPILLAR / 120"},
+      {"Kode Asset": "4MG024", "Kode Proyek": "MG 101", "Jenis": "MOTOR GRADER", "Merk": "SEM / 922"},
+      {"Kode Asset": "6PB006", "Kode Proyek": "PB 01", "Jenis": "POWER BROOM", "Merk": "BURANGKENG / PBFT"},
+      {"Kode Asset": "6PB003", "Kode Proyek": "PB 03", "Jenis": "POWER BROOM", "Merk": "BURANGKENG / PB 20"},
+      {"Kode Asset": "6PB004", "Kode Proyek": "PB 04", "Jenis": "POWER BROOM", "Merk": "BURANGKENG / PB 20"},
+      {"Kode Asset": "6PB007", "Kode Proyek": "PB 05", "Jenis": "POWER BROOM", "Merk": "BURANGKENG / PBFT"},
+      {"Kode Asset": "6PB011", "Kode Proyek": "PB 06", "Jenis": "POWER BROOM", "Merk": "BURANGKENG / PBFT"},
+      {"Kode Asset": "5SL001", "Kode Proyek": "SL 01", "Jenis": "LOWBED TRUCK", "Merk": "UD TRUCKS / CDA 260 S"},
+      {"Kode Asset": "5ST001", "Kode Proyek": "TC 01", "Jenis": "TRUCK CRANE", "Merk": "HINO / DUTRO 130 HD"},
+      {"Kode Asset": "7GP035", "Kode Proyek": "TL 01", "Jenis": "TOWER LAMP", "Merk": "ALLMAND / NIGHT-LITE PRO II V-SERIES"},
+      {"Kode Asset": "7GP036", "Kode Proyek": "TL 02", "Jenis": "TOWER LAMP", "Merk": "ALLMAND / NIGHT-LITE PRO II V-SERIES"},
+      {"Kode Asset": "3TR009", "Kode Proyek": "TR 02", "Jenis": "TYRE ROLLER", "Merk": "Sakai / TS 200-TTS6"},
+      {"Kode Asset": "3TR011", "Kode Proyek": "TR 03", "Jenis": "TYRE ROLLER", "Merk": "Sakai / TS 205"},
+      {"Kode Asset": "3TR004", "Kode Proyek": "TR 04", "Jenis": "TYRE ROLLER", "Merk": "Sakai / TS 200-TTS3"},
+      {"Kode Asset": "3TR003", "Kode Proyek": "TR 05", "Jenis": "TYRE ROLLER", "Merk": "Sakai / TS 200-TTS3"},
+      {"Kode Asset": "3TR010", "Kode Proyek": "TR 07", "Jenis": "TYRE ROLLER", "Merk": "Sakai / TS 200"},
+      {"Kode Asset": "4VR015", "Kode Proyek": "VR 01", "Jenis": "VIBRATING ROLLER", "Merk": "Volvo / SD 110"},
+      {"Kode Asset": "4VR013", "Kode Proyek": "VR 02", "Jenis": "VIBRATING ROLLER", "Merk": "LiuGong / CLG 6120 E"},
+      {"Kode Asset": "4VR005", "Kode Proyek": "VR 03", "Jenis": "VIBRATING ROLLER", "Merk": "Sakai / SV 512 D-H"},
+      {"Kode Asset": "4VR016", "Kode Proyek": "VR 04", "Jenis": "VIBRATING ROLLER", "Merk": "DYNAPAC / CA30D"},
+      {"Kode Asset": "4VR006", "Kode Proyek": "VR 05", "Jenis": "VIBRATING ROLLER", "Merk": "Sakai / SV 512 TF"},
+      {"Kode Asset": "4VR009", "Kode Proyek": "VR 06", "Jenis": "VIBRATING ROLLER", "Merk": "Sakai / SV 515 D-H"},
+      {"Kode Asset": "4VR008", "Kode Proyek": "VR 07", "Jenis": "VIBRATING ROLLER", "Merk": "Sakai / SV 515 D-H"},
+      {"Kode Asset": "4VR014", "Kode Proyek": "VR 08", "Jenis": "VIBRATING ROLLER", "Merk": "LiuGong / CLG 6120 E"},
+      {"Kode Asset": "4VR017", "Kode Proyek": "VR 09", "Jenis": "VIBRATING ROLLER", "Merk": "DYNAPAC / CA30D"},
+      {"Kode Asset": "4VR012", "Kode Proyek": "VR 12", "Jenis": "VIBRATING ROLLER", "Merk": "Volvo / SD 110"},
+      {"Kode Asset": "4WL013", "Kode Proyek": "WL 01", "Jenis": "WHEEL LOADER", "Merk": "LiuGong / CLG 856"},
+      {"Kode Asset": "4WL014", "Kode Proyek": "WL 02", "Jenis": "WHEEL LOADER", "Merk": "LiuGong / CLG 855 N"},
+      {"Kode Asset": "4WL008", "Kode Proyek": "WL 03", "Jenis": "WHEEL LOADER", "Merk": "CATERPILLAR / 950 H"},
+      {"Kode Asset": "4WL011", "Kode Proyek": "WL 04", "Jenis": "WHEEL LOADER", "Merk": "LiuGong / CLG 856"},
+      {"Kode Asset": "4WL012", "Kode Proyek": "WL 05", "Jenis": "WHEEL LOADER", "Merk": "LiuGong / CLG 856"},
+      {"Kode Asset": "4WL017", "Kode Proyek": "WL 06", "Jenis": "WHEEL LOADER", "Merk": "SEM / 655 D"},
+      {"Kode Asset": "4WL006", "Kode Proyek": "WL 07", "Jenis": "WHEEL LOADER", "Merk": "LiuGong / CLG 856"},
+      {"Kode Asset": "4WL019", "Kode Proyek": "WL 102", "Jenis": "WHEEL LOADER", "Merk": "SEM / 655 D"},
+      {"Kode Asset": "5LV016", "Kode Proyek": "WSC 01", "Jenis": "SARANA", "Merk": "Chery / J6 IWD 4x4"},
+      {"Kode Asset": "5DC062", "Kode Proyek": "WSC 06", "Jenis": "SARANA", "Merk": "TOYOTA / HILUX 2.4 G DOUBLE CABIN (4X4) M/T"},
+      {"Kode Asset": "5DC032", "Kode Proyek": "WSC 07", "Jenis": "SARANA", "Merk": "TOYOTA / HILUX 2.4 G DOUBLE CABIN (4X4) M/T"},
+      {"Kode Asset": "5DC024", "Kode Proyek": "WSC 08", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC GLS 4x4 M/T"},
+      {"Kode Asset": "5DC050", "Kode Proyek": "WSC 09", "Jenis": "SARANA", "Merk": "TOYOTA / HILUX 2.4 E DOUBLE CABIN 4X4 M/T"},
+      {"Kode Asset": "5DC061", "Kode Proyek": "WSC 10", "Jenis": "SARANA", "Merk": "TOYOTA / HILUX 2.4 G DOUBLE CABIN (4X4) M/T"},
+      {"Kode Asset": "5BK015", "Kode Proyek": "WSC 11", "Jenis": "BUS", "Merk": "ISUZU / NLR85U-HBYIN1 4X2 MT"},
+      {"Kode Asset": "5DC028", "Kode Proyek": "WSC 12", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC GLS 4x4 M/T"},
+      {"Kode Asset": "5DC052", "Kode Proyek": "WSC 13", "Jenis": "SARANA", "Merk": "TOYOTA / HILUX 2.4 E DOUBLE CABIN 4X4 M/T"},
+      {"Kode Asset": "5DC026", "Kode Proyek": "WSC 14", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC GLS 4x4 M/T"},
+      {"Kode Asset": "5DC030", "Kode Proyek": "WSC 15", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC GLS 4x4 M/T"},
+      {"Kode Asset": "5DC033", "Kode Proyek": "WSC 16", "Jenis": "SARANA", "Merk": "TOYOTA / HILUX 2.4 G DOUBLE CABIN (4X4) M/T"},
+      {"Kode Asset": "5DC031", "Kode Proyek": "WSC 17", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC GLS 4x4 M/T"},
+      {"Kode Asset": "5DC014", "Kode Proyek": "WSC 18", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC HDX-H (4x4) M/T"},
+      {"Kode Asset": "5DC051", "Kode Proyek": "WSC 19", "Jenis": "SARANA", "Merk": "TOYOTA / HILUX 2.4 E DOUBLE CABIN 4X4 M/T"},
+      {"Kode Asset": "5DC016", "Kode Proyek": "WSC 20", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC HDX-H (4x4) M/T"},
+      {"Kode Asset": "5DC053", "Kode Proyek": "WSC 21", "Jenis": "SARANA", "Merk": "TOYOTA / HILUX 2.4 E DOUBLE CABIN 4X4 M/T"},
+      {"Kode Asset": "5DC063", "Kode Proyek": "WSC 22", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC GLS 4x4 M/T"},
+      {"Kode Asset": "5LV011", "Kode Proyek": "WSC 24", "Jenis": "SARANA", "Merk": "Mitsubishi / Pajero Sport 2.5L Exceed-H 4x2 5A/T"},
+      {"Kode Asset": "5DC042", "Kode Proyek": "WSC 25", "Jenis": "SARANA", "Merk": "TOYOTA / HILUX 2,4 E  4x4 MT"},
+      {"Kode Asset": "5DC025", "Kode Proyek": "WSC 26", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC GLS 4x4 M/T"},
+      {"Kode Asset": "5BK005", "Kode Proyek": "WSC 27", "Jenis": "BUS", "Merk": "ISUZU / NLR55 L X BUS  (NLR 55 BLX)"},
+      {"Kode Asset": "5BK006", "Kode Proyek": "WSC 28", "Jenis": "BUS", "Merk": "ISUZU / NLR55 L X BUS  (NLR 55 BLX)"},
+      {"Kode Asset": "5DC064", "Kode Proyek": "WSC 29", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC GLS 4x4 M/T"},
+      {"Kode Asset": "5BK011", "Kode Proyek": "WSC 30", "Jenis": "BUS", "Merk": "ISUZU / NLR 55B LX"},
+      {"Kode Asset": "5BK008", "Kode Proyek": "WSC 31", "Jenis": "BUS", "Merk": "ISUZU / NLR55BL"},
+      {"Kode Asset": "5DC019", "Kode Proyek": "WSC 33", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC HDX-H (4x4) M/T"},
+      {"Kode Asset": "5BK009", "Kode Proyek": "WSC 34", "Jenis": "BUS", "Merk": "ISUZU / NLR 55B LX"},
+      {"Kode Asset": "5BK010", "Kode Proyek": "WSC 35", "Jenis": "BUS", "Merk": "ISUZU / NLR 55B LX"},
+      {"Kode Asset": "5DC065", "Kode Proyek": "WSC 37", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC GLS 4x4 M/T"},
+      {"Kode Asset": "5DC048", "Kode Proyek": "WSC 42", "Jenis": "SARANA", "Merk": "TOYOTA / HILUX 2.4 E DOUBLE CABIN 4X4 M/T"},
+      {"Kode Asset": "5DC054", "Kode Proyek": "WSC 44", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.4L DC GLS (4X4) M/T"},
+      {"Kode Asset": "5DC020", "Kode Proyek": "WSC 45", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC HDX-H (4x4) M/T"},
+      {"Kode Asset": "5DC049", "Kode Proyek": "WSC 47", "Jenis": "SARANA", "Merk": "TOYOTA / HILUX 2.4 E DOUBLE CABIN 4X4 M/T"},
+      {"Kode Asset": "5DC067", "Kode Proyek": "WSC 53", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC GLS 4x4 M/T"},
+      {"Kode Asset": "5DC068", "Kode Proyek": "WSC 54", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC GLS 4x4 M/T"},
+      {"Kode Asset": "5DC069", "Kode Proyek": "WSC 55", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC GLS 4x4 M/T"},
+      {"Kode Asset": "5DC035", "Kode Proyek": "WSC 103", "Jenis": "SARANA", "Merk": "TOYOTA / HILUX 2.4 G DOUBLE CABIN (4X4) M/T"},
+      {"Kode Asset": "5DC037", "Kode Proyek": "WSC 105", "Jenis": "SARANA", "Merk": "MITSUBISHI / Triton 2.4L DC GLS (4X4) M/T"},
+      {"Kode Asset": "5DC027", "Kode Proyek": "WSC 106", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC GLS 4x4 M/T"},
+      {"Kode Asset": "5DC029", "Kode Proyek": "WSC 108", "Jenis": "SARANA", "Merk": "Mitsubishi / Triton 2.5L DC GLS 4x4 M/T"},
+      {"Kode Asset": "5BK012", "Kode Proyek": "WSC 110", "Jenis": "BUS", "Merk": "ISUZU / NLR 85B LX"},
+      {"Kode Asset": "5BK013", "Kode Proyek": "WSC 111", "Jenis": "BUS", "Merk": "ISUZU / NLR 85B LX"},
+      {"Kode Asset": "5WT018", "Kode Proyek": "WT 01", "Jenis": "WATER TRUCK", "Merk": "HINO / FM 260 JW"},
+      {"Kode Asset": "5WT005", "Kode Proyek": "WT 02", "Jenis": "WATER TRUCK", "Merk": "Nissan / CWA 260 M"},
+      {"Kode Asset": "5WT006", "Kode Proyek": "WT 03", "Jenis": "WATER TRUCK", "Merk": "Nissan / CWA 260 M"},
+      {"Kode Asset": "5WT007", "Kode Proyek": "WT 04", "Jenis": "WATER TRUCK", "Merk": "Nissan / CWA 260 M"},
+      {"Kode Asset": "5WT012", "Kode Proyek": "WT 05", "Jenis": "WATER TRUCK", "Merk": "HINO / FM 260 JD"},
+      {"Kode Asset": "5WT014", "Kode Proyek": "WT 06", "Jenis": "WATER TRUCK", "Merk": "HINO / FM 260 JD"},
+      {"Kode Asset": "5WT016", "Kode Proyek": "WT 07", "Jenis": "WATER TRUCK", "Merk": "HINO / FM 260 JW"},
+      {"Kode Asset": "5WT008", "Kode Proyek": "WT 08", "Jenis": "WATER TRUCK", "Merk": "Toyota / Dyna 130 HT"},
+      {"Kode Asset": "5WT011", "Kode Proyek": "WT 09", "Jenis": "WATER TRUCK", "Merk": "Toyota / Dyna 130 HT"},
+      {"Kode Asset": "5WT009", "Kode Proyek": "WT 11", "Jenis": "WATER TRUCK", "Merk": "Toyota / Dyna 130 HT"},
+      {"Kode Asset": "5WT022", "Kode Proyek": "WT 12", "Jenis": "WATER TRUCK", "Merk": "HINO / FL 260 JN"}
+    ];
+
+    // Tire Count Mapping per Unit Type
+    const TIRE_COUNT_MAP = {
+      "MOTOR GRADER": 6,
+      "DUMP TRUCK - CHIP SPREADER": 10,
+      "SARANA": 5,
+      "BUS": 5,
+      "WATER TRUCK": 10,
+      "ASPHALT DISTRIBUTOR": 10,
+      "VIBRATING ROLLER": 2,
+      "BACKHOE LOADER": 4,
+      "WHEEL LOADER": 4,
+      "POWER BROOM": 4,
+      "FUEL TRUCK": 6,
+      "LIGHT TRUCK": 6,
+      "LIGHT TRUCK - DOUBLE CABIN": 6,
+      "TRUCK CRANE": 6,
+      "LOWBED TRUCK": 18,
+      "DUMP TRUCK - HAULING": 10,
+      "TOWER LAMP": 2,
+      "TYRE ROLLER": 8,
+      "BABY ROLLER": 2,
+      "ASPHALT CHIP SYNCHRONOUS SEALER": 10
+    };
+
+    const TIRE_BRANDS = ["Good Year", "Bridgestone", "Gajah Tunggal (GT Radial)", "Armour", "Sailun", "Micheline"];
+    const TIRE_TYPES = ["Cacing", "Rimba", "Semi Rimba"];
+    const TIRE_SIZES = [
+      "265/65 R17", "245/75 R16", "1.100 R20", "750 R16", "17.5 R25",
+      "14.00.24", "20.5 R25", "23.3 R25", "225/75 R16", "12.5/80-18",
+      "16.9-28", "16/70-24", "265/60 R18"
+    ];
+
+    const DEFAULT_STANDARDS = [
+      { id: "std-1", jenis: "Sarana", ukuran: "265/65 R17", merk: "GT Radial", tread: "Rimba", interval: 60000, skala: "Kilometer" },
+      { id: "std-2", jenis: "Sarana", ukuran: "265/65 R17", merk: "Bridgestone", tread: "Rimba", interval: 100000, skala: "Kilometer" },
+      { id: "std-3", jenis: "Sarana", ukuran: "245/75 R16", merk: "GT Radial", tread: "Rimba", interval: 60000, skala: "Kilometer" },
+      { id: "std-4", jenis: "Sarana", ukuran: "245/75 R16", merk: "Bridgestone", tread: "Rimba", interval: 80000, skala: "Kilometer" },
+      { id: "std-5", jenis: "Water Truck", ukuran: "1.100 R20", merk: "Bridgestone", tread: "Cacing", interval: 2000, skala: "Hour Meter" },
+      { id: "std-6", jenis: "Water Truck", ukuran: "1.100 R20", merk: "Bridgestone", tread: "Rimba", interval: 3500, skala: "Hour Meter" },
+      { id: "std-7", jenis: "Dump Truck", ukuran: "1.100 R20", merk: "Bridgestone", tread: "Cacing", interval: 2800, skala: "Hour Meter" },
+      { id: "std-8", jenis: "Dump Truck", ukuran: "1.100 R20", merk: "Bridgestone", tread: "Rimba", interval: 3500, skala: "Hour Meter" },
+      { id: "std-9", jenis: "Light Truck", ukuran: "750 R16", merk: "Good Year", tread: "Cacing", interval: 2800, skala: "Hour Meter" },
+      { id: "std-10", jenis: "Motor Grader", ukuran: "17.5 R25", merk: "Bridgestone", tread: "Rimba", interval: 2000, skala: "Hour Meter" },
+      { id: "std-11", jenis: "Motor Grader", ukuran: "14.00.24", merk: "Bridgestone", tread: "Rimba", interval: 1700, skala: "Hour Meter" },
+      { id: "std-12", jenis: "Motor Grader", ukuran: "20.5 R25", merk: "Bridgestone", tread: "Rimba", interval: 5500, skala: "Hour Meter" },
+      { id: "std-13", jenis: "Motor Grader", ukuran: "20.5 R25", merk: "Micheline", tread: "Rimba", interval: 8000, skala: "Hour Meter" },
+      { id: "std-14", jenis: "Water Truck", ukuran: "750 R16", merk: "Bridgestone", tread: "Rimba", interval: 2000, skala: "Hour Meter" },
+      { id: "std-15", jenis: "Wheel Loader", ukuran: "23.3 R25", merk: "Good Year", tread: "Rimba", interval: 3000, skala: "Hour Meter" },
+      { id: "std-16", jenis: "Bus", ukuran: "225/75 R16", merk: "GT Radial", tread: "Rimba", interval: 80000, skala: "Kilometer" },
+      { id: "std-17", jenis: "Backhoe Loader", ukuran: "12.5/80-18", merk: "Armour", tread: "Rimba", interval: 1800, skala: "Hour Meter" },
+      { id: "std-18", jenis: "Backhoe Loader", ukuran: "16.9-28", merk: "Armour", tread: "Rimba", interval: 2500, skala: "Hour Meter" },
+      { id: "std-19", jenis: "Backhoe Loader", ukuran: "16/70-24", merk: "Armour", tread: "Rimba", interval: 4000, skala: "Hour Meter" }
+    ];
+
+    // =========================================================================
+    // 2. APPLICATION STATE & FIREBASE SETUP
+    // =========================================================================
+    let appState = {
+      currentUser: {
+        email: OWNER_EMAIL,
+        name: "Saubari Ahmad (Owner)",
+        role: "OWNER" // OWNER | EDITOR | VIEWER
+      },
+      records: [],      // Monitored unit tire records
+      stocks: [],       // Warehouse tire stock inventory
+      stockLogs: [],    // Warehouse stock in/out mutation logs
+      standards: [...DEFAULT_STANDARDS],
+      permissions: [
+        { email: OWNER_EMAIL, role: "OWNER", note: "Pemilik Utama (Full Akses & Cloud Drive)" },
+        { email: "mekanik.lapangan@wsc.co.id", role: "EDITOR", note: "Akses Terbatas (Update Data Ban, Foto & Mutasi Stock)" },
+        { email: "viewer.project@wsc.co.id", role: "VIEWER", note: "Akses Pelihat (Hanya Lihat & Download Excel)" }
+      ],
+      formTires: [],
+      activeCameraSlot: null,
+      cameraStream: null
+    };
+
+    let db = null;
+    let auth = null;
+    let firebaseUser = null;
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'fleet-tyre-pro-wsc';
+
+    // Initialize Firebase (Mandatory Cloud Persistence)
+    async function initCloudSync() {
+      try {
+        if (typeof __firebase_config !== 'undefined') {
+          const firebaseConfig = JSON.parse(__firebase_config);
+          const app = initializeApp(firebaseConfig);
+          auth = getAuth(app);
+          db = getFirestore(app);
+
+          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            await signInWithCustomToken(auth, __initial_auth_token);
+          } else {
+            await signInAnonymously(auth);
+          }
+
+          onAuthStateChanged(auth, (user) => {
+            firebaseUser = user;
+            if (user) {
+              subscribeToCloudData();
+            }
+          });
+        } else {
+          seedInitialDemoIfEmpty();
+          seedInitialStockIfEmpty();
+        }
+      } catch (err) {
+        console.warn("Cloud init fallback:", err);
+        seedInitialDemoIfEmpty();
+        seedInitialStockIfEmpty();
+      }
+    }
+
+    function subscribeToCloudData() {
+      if (!db || !firebaseUser) return;
+
+      // 1. Listen to Unit Tire Records
+      const recordsRef = collection(db, 'artifacts', appId, 'public', 'data', 'tire_records');
+      onSnapshot(recordsRef, (snapshot) => {
+        const loaded = [];
+        snapshot.forEach(docSnap => {
+          loaded.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        if (loaded.length === 0 && appState.records.length === 0) {
+          seedInitialDemoIfEmpty();
+        } else {
+          appState.records = loaded.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+          refreshAllViews();
+        }
+      }, (err) => console.error("Snapshot records error:", err));
+
+      // 2. Listen to Warehouse Tire Stocks
+      const stocksRef = collection(db, 'artifacts', appId, 'public', 'data', 'tire_stocks');
+      onSnapshot(stocksRef, (snapshot) => {
+        const loadedStocks = [];
+        snapshot.forEach(docSnap => {
+          loadedStocks.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        if (loadedStocks.length === 0 && appState.stocks.length === 0) {
+          seedInitialStockIfEmpty();
+        } else {
+          appState.stocks = loadedStocks.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+          refreshAllViews();
+        }
+      }, (err) => console.error("Snapshot stocks error:", err));
+
+      // 3. Listen to Stock Mutation Logs
+      const stockLogsRef = collection(db, 'artifacts', appId, 'public', 'data', 'stock_logs');
+      onSnapshot(stockLogsRef, (snapshot) => {
+        const loadedLogs = [];
+        snapshot.forEach(docSnap => {
+          loadedLogs.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        appState.stockLogs = loadedLogs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        refreshAllViews();
+      }, (err) => console.error("Snapshot stock_logs error:", err));
+
+      // 4. Listen to Planning Standards
+      const standardsRef = collection(db, 'artifacts', appId, 'public', 'data', 'tire_standards');
+      onSnapshot(standardsRef, (snapshot) => {
+        if (!snapshot.empty) {
+          const stdList = [];
+          snapshot.forEach(docSnap => stdList.push({ id: docSnap.id, ...docSnap.data() }));
+          appState.standards = stdList;
+          refreshAllViews();
+        }
+      }, (err) => console.error("Snapshot standards error:", err));
+
+      // 5. Listen to Permissions
+      const permsRef = collection(db, 'artifacts', appId, 'public', 'data', 'user_permissions');
+      onSnapshot(permsRef, (snapshot) => {
+        if (!snapshot.empty) {
+          const pList = [{ email: OWNER_EMAIL, role: "OWNER", note: "Pemilik Utama (Full Akses & Cloud Drive)" }];
+          snapshot.forEach(docSnap => {
+            const d = docSnap.data();
+            if (d.email && d.email.toLowerCase() !== OWNER_EMAIL) {
+              pList.push({ id: docSnap.id, ...d });
+            }
+          });
+          appState.permissions = pList;
+          recomputeCurrentUserRole();
+          refreshAllViews();
+        }
+      }, (err) => console.error("Snapshot permissions error:", err));
+    }
+
+    async function persistRecordToCloud(record) {
+      if (!db || !firebaseUser) return;
+      try {
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tire_records', record.id), record);
+      } catch (e) {
+        console.error("Error saving record to cloud:", e);
+        showToast("Gagal sinkronisasi ke cloud, cek koneksi.", "error");
+      }
+    }
+
+    async function deleteRecordFromCloud(recordId) {
+      if (!db || !firebaseUser) return;
+      try {
+        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tire_records', recordId));
+      } catch (e) { console.error("Error deleting record:", e); }
+    }
+
+    async function persistStockToCloud(stockItem) {
+      if (!db || !firebaseUser) return;
+      try {
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tire_stocks', stockItem.id), stockItem);
+      } catch (e) {
+        console.error("Error saving stock to cloud:", e);
+        showToast("Gagal menyimpan stok ke cloud.", "error");
+      }
+    }
+
+    async function deleteStockFromCloud(stockId) {
+      if (!db || !firebaseUser) return;
+      try {
+        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tire_stocks', stockId));
+      } catch (e) { console.error("Error deleting stock:", e); }
+    }
+
+    async function persistStockLogToCloud(logEntry) {
+      if (!db || !firebaseUser) return;
+      try {
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'stock_logs', logEntry.id), logEntry);
+      } catch (e) { console.error("Error saving stock log:", e); }
+    }
+
+    async function persistStandardToCloud(std) {
+      if (!db || !firebaseUser) return;
+      try {
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tire_standards', std.id), std);
+      } catch (e) { console.error(e); }
+    }
+
+    async function deleteStandardFromCloud(stdId) {
+      if (!db || !firebaseUser) return;
+      try {
+        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tire_standards', stdId));
+      } catch (e) { console.error(e); }
+    }
+
+    async function persistPermissionToCloud(perm) {
+      if (!db || !firebaseUser) return;
+      try {
+        const safeId = perm.email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'user_permissions', safeId), perm);
+      } catch (e) { console.error(e); }
+    }
+
+    async function deletePermissionFromCloud(email) {
+      if (!db || !firebaseUser) return;
+      try {
+        const safeId = email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'user_permissions', safeId));
+      } catch (e) { console.error(e); }
+    }
+
+    // Seed initial unit records on first launch
+    function seedInitialDemoIfEmpty() {
+      if (appState.records.length > 0) return;
+      const samples = [
+        {
+          id: "rec_WSC_06",
+          kodeProyek: "WSC 06",
+          kodeAsset: "5DC062",
+          jenisUnit: "SARANA",
+          merkUnit: "TOYOTA / HILUX 2.4 G DOUBLE CABIN (4X4) M/T",
+          jumlahBan: 5,
+          unitHmKm: 98500,
+          updatedBy: OWNER_EMAIL,
+          updatedAt: Date.now() - 3600000,
+          tires: [
+            { pos: "Ban #1 (Depan Kiri)", jenis: "Rimba", merk: "Bridgestone", ukuran: "265/65 R17", tglInstal: "2025-02-10", hmPasang: 10000, hmUpdate: 98500, kondisi: "Aus / Tipis", photo: "" },
+            { pos: "Ban #2 (Depan Kanan)", jenis: "Rimba", merk: "Bridgestone", ukuran: "265/65 R17", tglInstal: "2025-02-10", hmPasang: 10000, hmUpdate: 98500, kondisi: "Aus / Tipis", photo: "" },
+            { pos: "Ban #3 (Belakang Kiri)", jenis: "Rimba", merk: "Gajah Tunggal (GT Radial)", ukuran: "265/65 R17", tglInstal: "2025-05-15", hmPasang: 37000, hmUpdate: 98500, kondisi: "Kritis / Wajib Ganti", photo: "" },
+            { pos: "Ban #4 (Belakang Kanan)", jenis: "Rimba", merk: "Gajah Tunggal (GT Radial)", ukuran: "265/65 R17", tglInstal: "2025-05-15", hmPasang: 37000, hmUpdate: 98500, kondisi: "Kritis / Wajib Ganti", photo: "" },
+            { pos: "Ban #5 (Serep)", jenis: "Rimba", merk: "Bridgestone", ukuran: "265/65 R17", tglInstal: "2025-02-10", hmPasang: 95000, hmUpdate: 98500, kondisi: "Baik / Normal", photo: "" }
+          ]
+        },
+        {
+          id: "rec_MG_01",
+          kodeProyek: "MG 01",
+          kodeAsset: "4MG016",
+          jenisUnit: "MOTOR GRADER",
+          merkUnit: "Komatsu / GD 705-5",
+          jumlahBan: 6,
+          unitHmKm: 6450,
+          updatedBy: OWNER_EMAIL,
+          updatedAt: Date.now() - 7200000,
+          tires: Array.from({ length: 6 }, (_, i) => ({
+            pos: `Ban #${i + 1}`,
+            jenis: "Rimba",
+            merk: "Bridgestone",
+            ukuran: "17.5 R25",
+            tglInstal: "2025-08-01",
+            hmPasang: i < 2 ? 4700 : 5400,
+            hmUpdate: 6450,
+            kondisi: i < 2 ? "Aus / Tipis" : "Baik / Normal",
+            photo: ""
+          }))
+        },
+        {
+          id: "rec_DT_01",
+          kodeProyek: "DT 01",
+          kodeAsset: "5DT004",
+          jenisUnit: "DUMP TRUCK - HAULING",
+          merkUnit: "HINO / FM 1J",
+          jumlahBan: 10,
+          unitHmKm: 8200,
+          updatedBy: OWNER_EMAIL,
+          updatedAt: Date.now() - 10800000,
+          tires: Array.from({ length: 10 }, (_, i) => ({
+            pos: `Ban #${i + 1}`,
+            jenis: "Rimba",
+            merk: "Bridgestone",
+            ukuran: "1.100 R20",
+            tglInstal: "2025-09-12",
+            hmPasang: 6500,
+            hmUpdate: 8200,
+            kondisi: "Baik / Normal",
+            photo: ""
+          }))
+        }
+      ];
+      appState.records = samples;
+      samples.forEach(s => persistRecordToCloud(s));
+      refreshAllViews();
+    }
+
+    // Seed initial warehouse tire stock if empty
+    function seedInitialStockIfEmpty() {
+      if (appState.stocks.length > 0) return;
+      const now = Date.now();
+      const initialStocks = [
+        {
+          id: "stk_1",
+          jenis: "Rimba",
+          merk: "Bridgestone",
+          ukuran: "1.100 R20",
+          tahunPembuatan: 2025,
+          qty: 12,
+          lokasi: "Rak Utama A1",
+          updatedAt: now - 10000,
+          updatedBy: OWNER_EMAIL
+        },
+        {
+          id: "stk_2",
+          jenis: "Cacing",
+          merk: "Bridgestone",
+          ukuran: "1.100 R20",
+          tahunPembuatan: 2025,
+          qty: 6,
+          lokasi: "Rak Utama A2",
+          updatedAt: now - 20000,
+          updatedBy: OWNER_EMAIL
+        },
+        {
+          id: "stk_3",
+          jenis: "Rimba",
+          merk: "Gajah Tunggal (GT Radial)",
+          ukuran: "265/65 R17",
+          tahunPembuatan: 2026,
+          qty: 8,
+          lokasi: "Rak Sarana B1",
+          updatedAt: now - 30000,
+          updatedBy: OWNER_EMAIL
+        },
+        {
+          id: "stk_4",
+          jenis: "Rimba",
+          merk: "Bridgestone",
+          ukuran: "17.5 R25",
+          tahunPembuatan: 2024,
+          qty: 4,
+          lokasi: "Area Alat Berat C1",
+          updatedAt: now - 40000,
+          updatedBy: OWNER_EMAIL
+        },
+        {
+          id: "stk_5",
+          jenis: "Rimba",
+          merk: "Good Year",
+          ukuran: "750 R16",
+          tahunPembuatan: 2025,
+          qty: 10,
+          lokasi: "Rak Light Truck B2",
+          updatedAt: now - 50000,
+          updatedBy: OWNER_EMAIL
+        }
+      ];
+      appState.stocks = initialStocks;
+      initialStocks.forEach(s => persistStockToCloud(s));
+
+      const initialLog = {
+        id: `log_${now}`,
+        timestamp: now - 10000,
+        type: "MASUK",
+        stockId: "stk_1",
+        jenis: "Rimba",
+        merk: "Bridgestone",
+        ukuran: "1.100 R20",
+        tahunPembuatan: 2025,
+        qtyChange: 12,
+        remainingQty: 12,
+        note: "Saldo awal gudang ban WSC",
+        user: OWNER_EMAIL
+      };
+      appState.stockLogs = [initialLog];
+      persistStockLogToCloud(initialLog);
+      refreshAllViews();
+    }
+
+    // =========================================================================
+    // 3. PLANNING & AGE CALCULATION ENGINE
+    // =========================================================================
+    function getTireCountForUnitType(jenis) {
+      if (!jenis) return 6;
+      const upper = jenis.toUpperCase().trim();
+      if (TIRE_COUNT_MAP[upper] !== undefined) return TIRE_COUNT_MAP[upper];
+      for (const [key, val] of Object.entries(TIRE_COUNT_MAP)) {
+        if (upper.includes(key) || key.includes(upper)) return val;
+      }
+      return 6;
+    }
+
+    function getDefaultScaleForUnitType(jenis) {
+      const u = (jenis || "").toUpperCase();
+      if (u.includes("SARANA") || u.includes("BUS")) return "Kilometer";
+      return "Hour Meter";
+    }
+
+    function findMatchingStandard(jenisUnit, ukuran, merk, tread) {
+      const jNorm = (jenisUnit || "").toLowerCase();
+      const uNorm = (ukuran || "").toLowerCase().trim();
+      const mNorm = (merk || "").toLowerCase();
+      const tNorm = (tread || "").toLowerCase();
+
+      const brandMatches = (stdMerk, tireMerk) => {
+        const sm = stdMerk.toLowerCase();
+        const tm = tireMerk.toLowerCase();
+        if (tm.includes(sm) || sm.includes(tm)) return true;
+        if ((sm.includes("gt radial") || sm.includes("gajah tunggal")) && (tm.includes("gt radial") || tm.includes("gajah tunggal"))) return true;
+        if (sm.includes("good year") && tm.includes("good year")) return true;
+        return false;
+      };
+
+      const unitMatches = (stdJenis, actualJenis) => {
+        const sj = stdJenis.toLowerCase();
+        const aj = actualJenis.toLowerCase();
+        return aj.includes(sj) || sj.includes(aj);
+      };
+
+      let match = appState.standards.find(s =>
+        unitMatches(s.jenis, jNorm) &&
+        s.ukuran.toLowerCase().trim() === uNorm &&
+        brandMatches(s.merk, mNorm) &&
+        s.tread.toLowerCase() === tNorm
+      );
+
+      if (!match) {
+        match = appState.standards.find(s =>
+          unitMatches(s.jenis, jNorm) &&
+          s.ukuran.toLowerCase().trim() === uNorm &&
+          brandMatches(s.merk, mNorm)
+        );
+      }
+
+      if (!match) {
+        match = appState.standards.find(s =>
+          s.ukuran.toLowerCase().trim() === uNorm &&
+          brandMatches(s.merk, mNorm)
+        );
+      }
+
+      if (!match) {
+        match = appState.standards.find(s =>
+          unitMatches(s.jenis, jNorm) &&
+          s.ukuran.toLowerCase().trim() === uNorm
+        );
+      }
+
+      if (!match) {
+        const skala = getDefaultScaleForUnitType(jenisUnit);
+        return {
+          interval: skala === "Kilometer" ? 60000 : 3000,
+          skala: skala,
+          isFallback: true
+        };
+      }
+      return match;
+    }
+
+    function evaluateTireMetrics(unitJenis, tire) {
+      const hmPasang = Number(tire.hmPasang) || 0;
+      const hmUpdate = Number(tire.hmUpdate) || 0;
+      const umur = Math.max(0, hmUpdate - hmPasang);
+      const std = findMatchingStandard(unitJenis, tire.ukuran, tire.merk, tire.jenis);
+      const interval = Number(std.interval) || 3000;
+      const skalaShort = std.skala === "Kilometer" ? "KM" : "HM";
+      const pct = Math.round((umur / interval) * 100);
+
+      let status = "OK";
+      let statusLabel = "Aman";
+      if (tire.kondisi === "Kritis / Wajib Ganti" || tire.kondisi === "Rusak / Bocor" || pct >= 100) {
+        status = "CRITICAL";
+        statusLabel = "Wajib Ganti";
+      } else if (tire.kondisi === "Aus / Tipis" || pct >= 80) {
+        status = "WARNING";
+        statusLabel = "Mendekati Ganti";
+      }
+
+      return { umur, interval, skala: std.skala, skalaShort, pct, status, statusLabel };
+    }
+
+    // Helper to check available warehouse stock matching a tire's size & tread
+    function getAvailableStockForSpec(ukuran, jenis) {
+      const uNorm = (ukuran || "").toLowerCase().trim();
+      const jNorm = (jenis || "").toLowerCase().trim();
+      const matching = appState.stocks.filter(s =>
+        (s.ukuran || "").toLowerCase().trim() === uNorm &&
+        (!jNorm || (s.jenis || "").toLowerCase().trim() === jNorm)
+      );
+      return matching.reduce((acc, item) => acc + (Number(item.qty) || 0), 0);
+    }
+
+    // =========================================================================
+    // 4. ROLE & PERMISSIONS MANAGEMENT
+    // =========================================================================
+    function recomputeCurrentUserRole() {
+      const email = (appState.currentUser.email || "").toLowerCase().trim();
+      if (email === OWNER_EMAIL) {
+        appState.currentUser.role = "OWNER";
+      } else {
+        const found = appState.permissions.find(p => p.email.toLowerCase().trim() === email);
+        appState.currentUser.role = found ? found.role : "VIEWER";
+      }
+      updateAuthUI();
+    }
+
+    function updateAuthUI() {
+      const { email, role } = appState.currentUser;
+      document.getElementById("user-display-email").textContent = email;
+      document.getElementById("user-avatar").textContent = email.slice(0, 2).toUpperCase();
+
+      const badge = document.getElementById("user-role-badge");
+      if (role === "OWNER") {
+        badge.textContent = "PEMILIK (FULL AKSES)";
+        badge.className = "text-[10px] font-bold text-amber-400";
+      } else if (role === "EDITOR") {
+        badge.textContent = "EDITOR (UPDATE BAN & STOCK)";
+        badge.className = "text-[10px] font-bold text-blue-400";
+      } else {
+        badge.textContent = "VIEWER (HANYA LIHAT)";
+        badge.className = "text-[10px] font-bold text-slate-400";
+      }
+
+      const canEdit = role === "OWNER" || role === "EDITOR";
+      const isOwner = role === "OWNER";
+
+      const heroInputBtn = document.getElementById("btn-hero-input");
+      if (heroInputBtn) heroInputBtn.style.display = canEdit ? "inline-flex" : "none";
+
+      const deskInputNav = document.getElementById("desktop-nav-input");
+      if (deskInputNav) deskInputNav.style.display = canEdit ? "flex" : "none";
+
+      const mobInputNav = document.getElementById("mobile-nav-input");
+      if (mobInputNav) mobInputNav.style.display = canEdit ? "flex" : "none";
+
+      const addStockCard = document.getElementById("add-stock-card");
+      if (addStockCard) addStockCard.style.display = canEdit ? "block" : "none";
+
+      const permForm = document.getElementById("add-user-permission-form");
+      if (permForm) permForm.style.display = isOwner ? "grid" : "none";
+
+      const stdForm = document.getElementById("add-standard-form");
+      if (stdForm) stdForm.style.display = isOwner ? "grid" : "none";
+
+      const importLabel = document.getElementById("import-json-label");
+      if (importLabel) importLabel.style.display = isOwner ? "flex" : "none";
+    }
+
+    window.openAuthModal = () => {
+      document.getElementById("login-email-input").value = appState.currentUser.email;
+      document.getElementById("login-name-input").value = appState.currentUser.name;
+      const modal = document.getElementById("auth-modal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    };
+
+    window.closeAuthModal = () => {
+      const modal = document.getElementById("auth-modal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    };
+
+    window.submitEmailLogin = () => {
+      const email = document.getElementById("login-email-input").value.trim().toLowerCase();
+      const name = document.getElementById("login-name-input").value.trim() || email;
+      if (!email) {
+        showToast("Masukkan alamat email terlebih dahulu.", "error");
+        return;
+      }
+      appState.currentUser.email = email;
+      appState.currentUser.name = name;
+      recomputeCurrentUserRole();
+      closeAuthModal();
+      refreshAllViews();
+      showToast(`Masuk sebagai ${email} (${appState.currentUser.role})`, "success");
+    };
+
+    window.quickSwitchRole = (email, name) => {
+      appState.currentUser.email = email.toLowerCase();
+      appState.currentUser.name = name;
+      recomputeCurrentUserRole();
+      closeAuthModal();
+      refreshAllViews();
+      showToast(`Beralih ke akun ${email} (${appState.currentUser.role})`, "success");
+    };
+
+    window.addUserPermission = async (e) => {
+      e.preventDefault();
+      if (appState.currentUser.role !== "OWNER") {
+        showToast("Hanya pemilik (saubariahmad.wsc@gmail.com) yang dapat mengatur hak akses.", "error");
+        return;
+      }
+      const email = document.getElementById("perm-email").value.trim().toLowerCase();
+      const role = document.getElementById("perm-role").value;
+      if (email === OWNER_EMAIL) {
+        showToast("Email pemilik sudah memiliki Full Akses permanen.", "info");
+        return;
+      }
+      const note = role === "EDITOR" ? "Akses Terbatas (Update Data Ban, Foto & Mutasi Stock)" : "Akses Pelihat (Hanya Lihat)";
+      const existingIdx = appState.permissions.findIndex(p => p.email.toLowerCase() === email);
+      const entry = { email, role, note };
+      if (existingIdx >= 0) {
+        appState.permissions[existingIdx] = entry;
+      } else {
+        appState.permissions.push(entry);
+      }
+      await persistPermissionToCloud(entry);
+      document.getElementById("perm-email").value = "";
+      renderSettingsTab();
+      showToast(`Izin akses untuk ${email} berhasil disimpan!`, "success");
+    };
+
+    window.removeUserPermission = async (email) => {
+      if (appState.currentUser.role !== "OWNER") return;
+      appState.permissions = appState.permissions.filter(p => p.email.toLowerCase() !== email.toLowerCase());
+      await deletePermissionFromCloud(email);
+      renderSettingsTab();
+      showToast(`Akses user ${email} dihapus.`, "info");
+    };
+
+    // =========================================================================
+    // 5. NAVIGATION & UI HELPERS
+    // =========================================================================
+    window.switchTab = (tabId) => {
+      if (tabId === "input" && appState.currentUser.role === "VIEWER") {
+        showToast("Akses Pelihat (Viewer) tidak diizinkan mengubah data.", "error");
+        return;
+      }
+
+      document.querySelectorAll(".tab-section").forEach(el => el.classList.add("hidden"));
+      const target = document.getElementById(`tab-${tabId}`);
+      if (target) target.classList.remove("hidden");
+
+      document.querySelectorAll(".nav-btn").forEach(btn => {
+        if (btn.dataset.nav === tabId) {
+          btn.classList.add("bg-amber-500", "text-slate-950");
+          btn.classList.remove("text-slate-300", "hover:bg-slate-700");
+        } else {
+          btn.classList.remove("bg-amber-500", "text-slate-950");
+          btn.classList.add("text-slate-300", "hover:bg-slate-700");
+        }
+      });
+
+      document.querySelectorAll(".nav-btn-mobile").forEach(btn => {
+        if (btn.dataset.nav === tabId && tabId !== "input") {
+          btn.classList.add("text-amber-400");
+        } else if (tabId !== "input") {
+          btn.classList.remove("text-amber-400");
+        }
+      });
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    function showToast(message, type = "info") {
+      const container = document.getElementById("toast-container");
+      const toast = document.createElement("div");
+      const colors = {
+        success: "bg-emerald-600 text-white border-emerald-500",
+        error: "bg-red-600 text-white border-red-500",
+        info: "bg-slate-900 text-white border-slate-700"
+      };
+      toast.className = `pointer-events-auto px-4 py-3 rounded-xl shadow-xl border text-xs font-semibold flex items-center justify-between gap-3 transition-all duration-300 ${colors[type] || colors.info}`;
+      toast.innerHTML = `<span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        setTimeout(() => toast.remove(), 300);
+      }, 3200);
+    }
+
+    let confirmResolver = null;
+    function showConfirm(title, message) {
+      document.getElementById("confirm-title").textContent = title;
+      document.getElementById("confirm-message").textContent = message;
+      const modal = document.getElementById("confirm-modal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+      return new Promise(resolve => { confirmResolver = resolve; });
+    }
+    window.resolveConfirm = (val) => {
+      const modal = document.getElementById("confirm-modal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+      if (confirmResolver) confirmResolver(val);
+    };
+
+    window.openLightbox = (src, title, meta = "") => {
+      if (!src) return;
+      document.getElementById("lightbox-img").src = src;
+      document.getElementById("lightbox-title").textContent = title;
+      document.getElementById("lightbox-meta").textContent = meta;
+      const modal = document.getElementById("lightbox-modal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    };
+
+    window.closeLightbox = () => {
+      const modal = document.getElementById("lightbox-modal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    };
+
+    // =========================================================================
+    // 6. STOCK BAN MANAGEMENT (+ TAMBAH / - KURANGI & LOG MUTASI)
+    // =========================================================================
+    function populateStockDatalists() {
+      document.getElementById("stock-jenis-list").innerHTML = TIRE_TYPES.map(t => `<option value="${t}">`).join("");
+      document.getElementById("stock-merk-list").innerHTML = TIRE_BRANDS.map(b => `<option value="${b}">`).join("");
+      document.getElementById("stock-ukuran-list").innerHTML = TIRE_SIZES.map(s => `<option value="${s}">`).join("");
+    }
+
+    window.handleAddNewStock = async (e) => {
+      e.preventDefault();
+      if (appState.currentUser.role === "VIEWER") {
+        showToast("Viewer tidak memiliki izin menambah stok ban.", "error");
+        return;
+      }
+
+      const jenis = document.getElementById("stock-input-jenis").value.trim();
+      const merk = document.getElementById("stock-input-merk").value.trim();
+      const ukuran = document.getElementById("stock-input-ukuran").value.trim();
+      const tahunPembuatan = parseInt(document.getElementById("stock-input-tahun").value, 10) || new Date().getFullYear();
+      const qtyAdd = parseInt(document.getElementById("stock-input-qty").value, 10) || 0;
+      const lokasi = document.getElementById("stock-input-lokasi").value.trim();
+
+      if (!jenis || !merk || !ukuran || qtyAdd <= 0) {
+        showToast("Lengkapi Jenis, Merk, Ukuran, Tahun Pembuatan, dan Jumlah Stock (>0).", "error");
+        return;
+      }
+
+      // Check if identical item (Jenis + Merk + Ukuran + Tahun Pembuatan) already exists
+      const existing = appState.stocks.find(s =>
+        s.jenis.toLowerCase() === jenis.toLowerCase() &&
+        s.merk.toLowerCase() === merk.toLowerCase() &&
+        s.ukuran.toLowerCase() === ukuran.toLowerCase() &&
+        Number(s.tahunPembuatan) === tahunPembuatan
+      );
+
+      const now = Date.now();
+      let targetStock = null;
+
+      if (existing) {
+        existing.qty = (Number(existing.qty) || 0) + qtyAdd;
+        if (lokasi) existing.lokasi = lokasi;
+        existing.updatedAt = now;
+        existing.updatedBy = appState.currentUser.email;
+        targetStock = existing;
+        showToast(`Stock ${merk} ${ukuran} (${tahunPembuatan}) digabungkan! Total sekarang: ${existing.qty} Pcs.`, "success");
+      } else {
+        targetStock = {
+          id: `stk_${now}_${Math.random().toString(36).slice(2, 6)}`,
+          jenis,
+          merk,
+          ukuran,
+          tahunPembuatan,
+          qty: qtyAdd,
+          lokasi: lokasi || "Gudang Utama",
+          updatedAt: now,
+          updatedBy: appState.currentUser.email
+        };
+        appState.stocks.unshift(targetStock);
+        showToast(`Item stock baru ${merk} ${ukuran} (${tahunPembuatan}) sebanyak ${qtyAdd} Pcs berhasil ditambahkan!`, "success");
+      }
+
+      // Log mutation
+      const logEntry = {
+        id: `log_${now}_${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: now,
+        type: "MASUK",
+        stockId: targetStock.id,
+        jenis: targetStock.jenis,
+        merk: targetStock.merk,
+        ukuran: targetStock.ukuran,
+        tahunPembuatan: targetStock.tahunPembuatan,
+        qtyChange: qtyAdd,
+        remainingQty: targetStock.qty,
+        note: lokasi ? `Stock masuk (${lokasi})` : "Penambahan stock baru",
+        user: appState.currentUser.email
+      };
+      appState.stockLogs.unshift(logEntry);
+
+      await persistStockToCloud(targetStock);
+      await persistStockLogToCloud(logEntry);
+
+      // Reset inputs except year
+      document.getElementById("stock-input-jenis").value = "";
+      document.getElementById("stock-input-merk").value = "";
+      document.getElementById("stock-input-ukuran").value = "";
+      document.getElementById("stock-input-qty").value = 1;
+      document.getElementById("stock-input-lokasi").value = "";
+
+      refreshAllViews();
+    };
+
+    // Quick +/- 1 Adjustment directly from table row
+    window.quickAdjustStock = async (stockId, delta) => {
+      if (appState.currentUser.role === "VIEWER") {
+        showToast("Viewer tidak diizinkan mengubah jumlah stock.", "error");
+        return;
+      }
+      const item = appState.stocks.find(s => s.id === stockId);
+      if (!item) return;
+
+      const currentQty = Number(item.qty) || 0;
+      const newQty = currentQty + delta;
+      if (newQty < 0) {
+        showToast("Stock tidak mencukupi untuk dikurangi (minimal 0 Pcs).", "error");
+        return;
+      }
+
+      const now = Date.now();
+      item.qty = newQty;
+      item.updatedAt = now;
+      item.updatedBy = appState.currentUser.email;
+
+      const logEntry = {
+        id: `log_${now}_${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: now,
+        type: delta > 0 ? "MASUK" : "KELUAR",
+        stockId: item.id,
+        jenis: item.jenis,
+        merk: item.merk,
+        ukuran: item.ukuran,
+        tahunPembuatan: item.tahunPembuatan,
+        qtyChange: Math.abs(delta),
+        remainingQty: newQty,
+        note: delta > 0 ? "Penambahan cepat (+1 Pcs)" : "Pengurangan cepat (-1 Pcs)",
+        user: appState.currentUser.email
+      };
+      appState.stockLogs.unshift(logEntry);
+
+      await persistStockToCloud(item);
+      await persistStockLogToCloud(logEntry);
+      refreshAllViews();
+      showToast(`Stock ${item.merk} ${item.ukuran} (${item.tahunPembuatan}) ${delta > 0 ? 'bertambah +1' : 'berkurang -1'} → Sisa: ${newQty} Pcs`, "success");
+    };
+
+    // Modal Adjustment with custom qty and note
+    window.openStockAdjustModal = (stockId, mode) => {
+      if (appState.currentUser.role === "VIEWER") {
+        showToast("Viewer tidak diizinkan mengubah jumlah stock.", "error");
+        return;
+      }
+      const item = appState.stocks.find(s => s.id === stockId);
+      if (!item) return;
+
+      document.getElementById("adjust-stock-id").value = item.id;
+      document.getElementById("adjust-stock-type").value = mode; // 'IN' or 'OUT'
+      document.getElementById("adjust-item-name").textContent = `${item.merk} — ${item.ukuran}`;
+      document.getElementById("adjust-item-meta").textContent = `Jenis: ${item.jenis} • Tahun Pembuatan: ${item.tahunPembuatan} • Lokasi: ${item.lokasi || "-"}`;
+      document.getElementById("adjust-current-qty").textContent = item.qty;
+      document.getElementById("adjust-qty-input").value = 1;
+      document.getElementById("adjust-note-input").value = "";
+
+      const badge = document.getElementById("stock-adjust-badge");
+      const title = document.getElementById("stock-adjust-title");
+      const qtyLabel = document.getElementById("adjust-qty-label");
+      const submitBtn = document.getElementById("adjust-submit-btn");
+
+      if (mode === "IN") {
+        badge.textContent = "STOCK MASUK (+ TAMBAH)";
+        badge.className = "text-[11px] font-bold uppercase tracking-wider text-emerald-400";
+        title.textContent = "Tambah Stock Ban Masuk";
+        qtyLabel.innerHTML = `Jumlah Ban Masuk (Pcs) <span class="text-red-500">*</span>`;
+        submitBtn.textContent = "+ Tambah ke Stock";
+        submitBtn.className = "px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-lg transition";
+      } else {
+        badge.textContent = "STOCK KELUAR (- KURANGI)";
+        badge.className = "text-[11px] font-bold uppercase tracking-wider text-red-400";
+        title.textContent = "Kurangi Stock Ban (Pemakaian / Keluar)";
+        qtyLabel.innerHTML = `Jumlah Ban Keluar (Pcs) <span class="text-red-500">*</span>`;
+        submitBtn.textContent = "- Kurangi Stock";
+        submitBtn.className = "px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-extrabold shadow-lg transition";
+      }
+
+      const modal = document.getElementById("stock-adjust-modal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    };
+
+    window.closeStockAdjustModal = () => {
+      const modal = document.getElementById("stock-adjust-modal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    };
+
+    window.stepAdjustQty = (delta) => {
+      const inp = document.getElementById("adjust-qty-input");
+      const val = Math.max(1, (parseInt(inp.value, 10) || 1) + delta);
+      inp.value = val;
+    };
+
+    window.submitStockAdjustment = async (e) => {
+      e.preventDefault();
+      if (appState.currentUser.role === "VIEWER") return;
+
+      const stockId = document.getElementById("adjust-stock-id").value;
+      const mode = document.getElementById("adjust-stock-type").value;
+      const qtyChange = parseInt(document.getElementById("adjust-qty-input").value, 10) || 0;
+      const note = document.getElementById("adjust-note-input").value.trim();
+
+      const item = appState.stocks.find(s => s.id === stockId);
+      if (!item || qtyChange <= 0) return;
+
+      const currentQty = Number(item.qty) || 0;
+      if (mode === "OUT" && qtyChange > currentQty) {
+        showToast(`Gagal! Jumlah keluar (${qtyChange} Pcs) melebihi stock tersedia (${currentQty} Pcs).`, "error");
+        return;
+      }
+
+      const newQty = mode === "IN" ? currentQty + qtyChange : currentQty - qtyChange;
+      const now = Date.now();
+      item.qty = newQty;
+      item.updatedAt = now;
+      item.updatedBy = appState.currentUser.email;
+
+      const logEntry = {
+        id: `log_${now}_${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: now,
+        type: mode === "IN" ? "MASUK" : "KELUAR",
+        stockId: item.id,
+        jenis: item.jenis,
+        merk: item.merk,
+        ukuran: item.ukuran,
+        tahunPembuatan: item.tahunPembuatan,
+        qtyChange,
+        remainingQty: newQty,
+        note: note || (mode === "IN" ? "Penambahan stock gudang" : "Pengeluaran stock gudang"),
+        user: appState.currentUser.email
+      };
+      appState.stockLogs.unshift(logEntry);
+
+      await persistStockToCloud(item);
+      await persistStockLogToCloud(logEntry);
+
+      closeStockAdjustModal();
+      refreshAllViews();
+      showToast(
+        mode === "IN"
+          ? `Berhasil menambah +${qtyChange} Pcs ${item.merk} ${item.ukuran}. Total: ${newQty} Pcs.`
+          : `Berhasil mengurangi -${qtyChange} Pcs ${item.merk} ${item.ukuran}. Sisa: ${newQty} Pcs.`,
+        "success"
+      );
+    };
+
+    window.deleteStockItem = async (stockId) => {
+      if (appState.currentUser.role !== "OWNER") {
+        showToast("Hanya Pemilik (saubariahmad.wsc@gmail.com) yang dapat menghapus item stock.", "error");
+        return;
+      }
+      const item = appState.stocks.find(s => s.id === stockId);
+      if (!item) return;
+
+      const ok = await showConfirm(
+        "Hapus Item Stock Ban",
+        `Yakin ingin menghapus item stock ${item.merk} ${item.ukuran} (Tahun ${item.tahunPembuatan}) dari daftar gudang?`
+      );
+      if (!ok) return;
+
+      appState.stocks = appState.stocks.filter(s => s.id !== stockId);
+      await deleteStockFromCloud(stockId);
+      refreshAllViews();
+      showToast("Item stock ban berhasil dihapus.", "info");
+    };
+
+    window.renderStockTab = () => {
+      const searchQ = (document.getElementById("stock-search").value || "").toLowerCase();
+      const filterJenis = document.getElementById("stock-filter-jenis").value;
+
+      const totalQty = appState.stocks.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
+      document.getElementById("stock-header-total-qty").textContent = totalQty.toLocaleString('id-ID');
+
+      const navBadge = document.getElementById("nav-stock-badge");
+      if (navBadge) navBadge.textContent = totalQty;
+
+      const filtered = appState.stocks.filter(s => {
+        if (filterJenis && (s.jenis || "").toLowerCase() !== filterJenis.toLowerCase()) return false;
+        if (searchQ) {
+          const hay = `${s.jenis} ${s.merk} ${s.ukuran} ${s.tahunPembuatan} ${s.lokasi || ""}`.toLowerCase();
+          if (!hay.includes(searchQ)) return false;
+        }
+        return true;
+      });
+
+      const canEdit = appState.currentUser.role !== "VIEWER";
+      const isOwner = appState.currentUser.role === "OWNER";
+      const tbody = document.getElementById("stock-table-body");
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-400">Tidak ada item stock ban yang sesuai pencarian/filter.</td></tr>`;
+      } else {
+        tbody.innerHTML = filtered.map((s, idx) => {
+          const qty = Number(s.qty) || 0;
+          const qtyBadge = qty === 0
+            ? "bg-red-100 text-red-700 border-red-200"
+            : qty <= 2
+              ? "bg-amber-100 text-amber-800 border-amber-200"
+              : "bg-emerald-100 text-emerald-800 border-emerald-200";
+
+          return `
+            <tr class="hover:bg-slate-50 transition">
+              <td class="py-3 px-4 text-slate-400 font-medium">${idx + 1}</td>
+              <td class="py-3 px-4">
+                <span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 font-bold text-xs">${s.jenis}</span>
+              </td>
+              <td class="py-3 px-4 font-extrabold text-slate-900">${s.merk}</td>
+              <td class="py-3 px-4 font-bold text-blue-800">${s.ukuran}</td>
+              <td class="py-3 px-4 text-center">
+                <span class="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-800 font-extrabold text-xs border border-indigo-200">DOT ${s.tahunPembuatan}</span>
+              </td>
+              <td class="py-3 px-4 text-slate-600">${s.lokasi || "-"}</td>
+              <td class="py-3 px-4 text-center">
+                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-extrabold border ${qtyBadge}">
+                  ${qty} Pcs
+                </span>
+              </td>
+              <td class="py-3 px-4 text-right">
+                ${canEdit ? `
+                  <div class="inline-flex items-center justify-end gap-1.5 flex-wrap">
+                    <button onclick="quickAdjustStock('${s.id}', -1)" ${qty <= 0 ? "disabled" : ""} title="Kurangi 1 Pcs" class="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 disabled:opacity-40 text-red-700 border border-red-200 font-extrabold text-xs flex items-center justify-center transition">-1</button>
+                    <button onclick="openStockAdjustModal('${s.id}', 'OUT')" ${qty <= 0 ? "disabled" : ""} class="px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[11px] font-bold flex items-center gap-1 shadow-sm transition">
+                      <i data-lucide="minus-circle" class="w-3.5 h-3.5"></i> Kurangi
+                    </button>
+                    <button onclick="openStockAdjustModal('${s.id}', 'IN')" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 shadow-sm transition">
+                      <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> Tambah
+                    </button>
+                    <button onclick="quickAdjustStock('${s.id}', 1)" title="Tambah 1 Pcs" class="w-7 h-7 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-extrabold text-xs flex items-center justify-center transition">+1</button>
+                    ${isOwner ? `
+                      <button onclick="deleteStockItem('${s.id}')" title="Hapus Item Stock" class="p-1.5 rounded-lg bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600 transition ml-1">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                      </button>
+                    ` : ""}
+                  </div>
+                ` : `<span class="text-[11px] text-slate-400">View Only</span>`}
+              </td>
+            </tr>
+          `;
+        }).join("");
+      }
+
+      // Render Stock Mutation Logs
+      const logsCountEl = document.getElementById("stock-logs-count");
+      if (logsCountEl) logsCountEl.textContent = `${appState.stockLogs.length} Transaksi`;
+
+      const logsBody = document.getElementById("stock-logs-body");
+      if (appState.stockLogs.length === 0) {
+        logsBody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-400">Belum ada riwayat mutasi masuk/keluar stock ban.</td></tr>`;
+      } else {
+        logsBody.innerHTML = appState.stockLogs.slice(0, 60).map(log => {
+          const isIn = log.type === "MASUK";
+          const timeStr = log.timestamp ? new Date(log.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : "-";
+          return `
+            <tr class="hover:bg-slate-50">
+              <td class="py-2.5 px-4 text-slate-500 whitespace-nowrap">${timeStr}</td>
+              <td class="py-2.5 px-4">
+                <span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold ${isIn ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-700'}">
+                  ${isIn ? '▲ MASUK' : '▼ KELUAR'}
+                </span>
+              </td>
+              <td class="py-2.5 px-4 font-semibold text-slate-800">
+                ${log.merk} • <span class="text-blue-700">${log.ukuran}</span> (${log.jenis}, Thn ${log.tahunPembuatan})
+              </td>
+              <td class="py-2.5 px-4 text-center font-extrabold ${isIn ? 'text-emerald-600' : 'text-red-600'}">
+                ${isIn ? `+${log.qtyChange}` : `-${log.qtyChange}`} Pcs
+              </td>
+              <td class="py-2.5 px-4 text-center font-bold text-slate-900">${log.remainingQty} Pcs</td>
+              <td class="py-2.5 px-4 text-slate-600">${log.note || "-"}</td>
+              <td class="py-2.5 px-4 text-[11px] text-slate-500">${log.user || "-"}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+    };
+
+    // =========================================================================
+    // 7. FORM AUTO-FILL, TIRE SLOTS, COPY DETAIL & PHOTO CAPTURE
+    // =========================================================================
+    function populateProjectDatalist() {
+      const dl = document.getElementById("project-code-list");
+      dl.innerHTML = MASTER_EQUIPMENT.map(item =>
+        `<option value="${item["Kode Proyek"]}">${item["Kode Asset"]} — ${item["Jenis"]} (${item["Merk"]})</option>`
+      ).join("");
+
+      const jenisSet = [...new Set(MASTER_EQUIPMENT.map(i => i["Jenis"]))].sort();
+      const filterEl = document.getElementById("rekap-jenis-filter");
+      filterEl.innerHTML = `<option value="">Semua Jenis Unit (${jenisSet.length})</option>` +
+        jenisSet.map(j => `<option value="${j}">${j}</option>`).join("");
+    }
+
+    window.startNewInput = (kodeProyek = "") => {
+      if (appState.currentUser.role === "VIEWER") {
+        showToast("Anda masuk sebagai Viewer (Akses Pelihat).", "error");
+        return;
+      }
+      resetUnitForm();
+      switchTab("input");
+      if (kodeProyek) {
+        document.getElementById("input-kode-proyek").value = kodeProyek;
+        handleProjectCodeAutoFill(kodeProyek);
+      }
+    };
+
+    window.resetUnitForm = () => {
+      document.getElementById("edit-record-id").value = "";
+      document.getElementById("form-page-title").textContent = "Input Data Ban Unit Baru";
+      document.getElementById("input-kode-proyek").value = "";
+      document.getElementById("input-kode-asset").value = "";
+      document.getElementById("input-jenis-unit").value = "";
+      document.getElementById("input-merk-unit").value = "";
+      document.getElementById("input-jumlah-ban").value = 6;
+      document.getElementById("input-unit-hm").value = "";
+      generateTireSlots(6);
+    };
+
+    window.handleProjectCodeAutoFill = (val) => {
+      const query = (val || "").trim().toUpperCase();
+      const matched = MASTER_EQUIPMENT.find(item => item["Kode Proyek"].toUpperCase() === query);
+      if (matched) {
+        document.getElementById("input-kode-asset").value = matched["Kode Asset"];
+        document.getElementById("input-jenis-unit").value = matched["Jenis"];
+        document.getElementById("input-merk-unit").value = matched["Merk"];
+
+        const scale = getDefaultScaleForUnitType(matched["Jenis"]);
+        document.getElementById("unit-scale-badge").textContent = scale === "Kilometer" ? "KM" : "HM";
+
+        const existingRecord = appState.records.find(r => r.kodeProyek.toUpperCase() === query);
+        if (existingRecord && !document.getElementById("edit-record-id").value) {
+          editUnitRecord(existingRecord.id, true);
+          showToast(`Data unit ${matched["Kode Proyek"]} sudah ada — dimuat untuk update terbaru.`, "info");
+          return;
+        }
+
+        const tireCount = getTireCountForUnitType(matched["Jenis"]);
+        document.getElementById("input-jumlah-ban").value = tireCount;
+        generateTireSlots(tireCount);
+      }
+    };
+
+    window.handleUnitTypeTireCount = (jenis) => {
+      const count = getTireCountForUnitType(jenis);
+      document.getElementById("input-jumlah-ban").value = count;
+      generateTireSlots(count);
+    };
+
+    window.syncUnitHmToTires = (val) => {
+      const num = Number(val) || 0;
+      appState.formTires.forEach((t, idx) => {
+        t.hmUpdate = num;
+        const inp = document.getElementById(`tire-hm-update-${idx}`);
+        if (inp) inp.value = num;
+        updateSingleTireAgePreview(idx);
+      });
+    };
+
+    function getDefaultTirePositionName(idx, total) {
+      if (total === 5) {
+        const names = ["Depan Kiri", "Depan Kanan", "Belakang Kiri", "Belakang Kanan", "Ban Serep"];
+        return `Ban #${idx + 1} (${names[idx] || "Posisi " + (idx + 1)})`;
+      }
+      if (total === 4) {
+        const names = ["Depan Kiri", "Depan Kanan", "Belakang Kiri", "Belakang Kanan"];
+        return `Ban #${idx + 1} (${names[idx]})`;
+      }
+      if (total === 2) {
+        return `Ban #${idx + 1} (${idx === 0 ? "Kiri / Depan" : "Kanan / Belakang"})`;
+      }
+      return `Ban #${idx + 1}`;
+    }
+
+    window.generateTireSlots = (count) => {
+      const safeCount = Math.max(1, Math.min(30, count || 1));
+      document.getElementById("slot-count-label").textContent = safeCount;
+      const unitHm = Number(document.getElementById("input-unit-hm").value) || 0;
+      const today = new Date().toISOString().split("T")[0];
+
+      const newSlots = [];
+      for (let i = 0; i < safeCount; i++) {
+        if (appState.formTires[i]) {
+          newSlots.push(appState.formTires[i]);
+        } else {
+          newSlots.push({
+            pos: getDefaultTirePositionName(i, safeCount),
+            jenis: "Rimba",
+            merk: "Bridgestone",
+            ukuran: "1.100 R20",
+            tglInstal: today,
+            hmPasang: 0,
+            hmUpdate: unitHm,
+            kondisi: "Baik / Normal",
+            photo: ""
+          });
+        }
+      }
+      appState.formTires = newSlots;
+      renderTireSlotsForm();
+    };
+
+    function renderTireSlotsForm() {
+      const container = document.getElementById("tire-slots-container");
+      const jenisUnit = document.getElementById("input-jenis-unit").value;
+
+      container.innerHTML = appState.formTires.map((tire, idx) => {
+        const metrics = evaluateTireMetrics(jenisUnit, tire);
+        const statusColor = metrics.status === "CRITICAL"
+          ? "bg-red-100 text-red-700 border-red-200"
+          : metrics.status === "WARNING"
+            ? "bg-amber-100 text-amber-800 border-amber-200"
+            : "bg-emerald-100 text-emerald-700 border-emerald-200";
+
+        return `
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3 relative">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-slate-900 text-amber-400 font-extrabold text-xs flex items-center justify-center">${idx + 1}</span>
+                <input type="text" value="${tire.pos}" onchange="updateTireField(${idx}, 'pos', this.value)" class="font-bold text-sm text-slate-900 bg-transparent border-b border-dashed border-slate-300 focus:border-amber-500 focus:outline-none w-44" />
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button type="button" onclick="copyTireDetailsToNext(${idx})" title="Salin detail ke ban berikutnya (tanpa foto)" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold flex items-center gap-1">
+                  <i data-lucide="arrow-down-right" class="w-3 h-3"></i> Salin Next
+                </button>
+                <button type="button" onclick="copyTireDetailsToAll(${idx})" title="Salin detail ke semua ban di unit ini (tanpa foto)" class="px-2 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-[11px] font-bold flex items-center gap-1">
+                  <i data-lucide="copy" class="w-3 h-3"></i> Salin Semua
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-500 mb-1">Jenis / Tread</label>
+                <select onchange="updateTireField(${idx}, 'jenis', this.value)" class="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white font-medium">
+                  ${TIRE_TYPES.map(t => `<option value="${t}" ${tire.jenis === t ? "selected" : ""}>${t}</option>`).join("")}
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-500 mb-1">Merk Ban</label>
+                <select onchange="updateTireField(${idx}, 'merk', this.value)" class="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white font-medium">
+                  ${TIRE_BRANDS.map(b => `<option value="${b}" ${tire.merk === b ? "selected" : ""}>${b}</option>`).join("")}
+                </select>
+              </div>
+
+              <div class="col-span-2 sm:col-span-1">
+                <label class="block text-[11px] font-semibold text-slate-500 mb-1">Ukuran Ban</label>
+                <select onchange="updateTireField(${idx}, 'ukuran', this.value)" class="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white font-medium">
+                  ${TIRE_SIZES.map(s => `<option value="${s}" ${tire.ukuran === s ? "selected" : ""}>${s}</option>`).join("")}
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-500 mb-1">Tanggal Instal</label>
+                <input type="date" value="${tire.tglInstal || ""}" onchange="updateTireField(${idx}, 'tglInstal', this.value)" class="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white" />
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-500 mb-1">HM/KM Pasang</label>
+                <input type="number" min="0" step="any" value="${tire.hmPasang}" oninput="updateTireField(${idx}, 'hmPasang', this.value)" class="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white font-semibold" />
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-500 mb-1">HM/KM Terbaru</label>
+                <input id="tire-hm-update-${idx}" type="number" min="0" step="any" value="${tire.hmUpdate}" oninput="updateTireField(${idx}, 'hmUpdate', this.value)" class="w-full px-2.5 py-2 rounded-xl border border-blue-300 bg-blue-50/40 font-semibold text-blue-900" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+              <div>
+                <div class="text-[10px] font-bold uppercase text-slate-400">Umur Ban Otomatis</div>
+                <div id="tire-age-display-${idx}" class="text-xs font-extrabold text-slate-900 mt-0.5">
+                  ${metrics.umur.toLocaleString('id-ID')} ${metrics.skalaShort}
+                  <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] border ${statusColor}">${metrics.pct}% (${metrics.statusLabel})</span>
+                </div>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">Kondisi Fisik Ban</label>
+                <select onchange="updateTireField(${idx}, 'kondisi', this.value)" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold">
+                  <option value="Baik / Normal" ${tire.kondisi === "Baik / Normal" ? "selected" : ""}>🟢 Baik / Normal</option>
+                  <option value="Aus / Tipis" ${tire.kondisi === "Aus / Tipis" ? "selected" : ""}>🟡 Aus / Tipis</option>
+                  <option value="Rusak / Bocor" ${tire.kondisi === "Rusak / Bocor" ? "selected" : ""}>🟠 Rusak / Bocor</option>
+                  <option value="Kritis / Wajib Ganti" ${tire.kondisi === "Kritis / Wajib Ganti" ? "selected" : ""}>🔴 Kritis / Wajib Ganti</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="pt-1">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                  <i data-lucide="image" class="w-3.5 h-3.5 text-slate-500"></i> Foto Kondisi Ban
+                </span>
+                ${tire.photo ? `<button type="button" onclick="removeTirePhoto(${idx})" class="text-[11px] text-red-600 font-semibold hover:underline">Hapus Foto</button>` : ""}
+              </div>
+
+              <div class="flex items-center gap-3">
+                <div class="w-16 h-16 rounded-xl bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center overflow-hidden shrink-0">
+                  ${tire.photo
+                    ? `<img src="${tire.photo}" onclick="openLightbox('${tire.photo}', '${tire.pos}')" class="w-full h-full object-cover cursor-pointer" alt="Ban" />`
+                    : `<i data-lucide="camera-off" class="w-5 h-5 text-slate-400"></i>`
+                  }
+                </div>
+
+                <div class="flex-1 grid grid-cols-2 gap-2">
+                  <button type="button" onclick="triggerRealtimeCamera(${idx})" class="px-2.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold flex flex-col items-center justify-center gap-1 text-center transition">
+                    <i data-lucide="camera" class="w-4 h-4 text-amber-400"></i>
+                    <span>Foto Real-Time</span>
+                  </button>
+                  <input id="cam-capture-input-${idx}" type="file" accept="image/*" capture="environment" onchange="handleImageFileSelect(event, ${idx})" class="hidden" />
+
+                  <label class="cursor-pointer px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-[11px] font-bold flex flex-col items-center justify-center gap-1 text-center transition">
+                    <i data-lucide="folder-open" class="w-4 h-4 text-blue-600"></i>
+                    <span>Pilih File / Galeri</span>
+                    <input type="file" accept="image/*" onchange="handleImageFileSelect(event, ${idx})" class="hidden" />
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      lucide.createIcons();
+    }
+
+    window.updateTireField = (idx, field, val) => {
+      appState.formTires[idx][field] = val;
+      if (field === "hmPasang" || field === "hmUpdate" || field === "ukuran" || field === "merk" || field === "jenis" || field === "kondisi") {
+        updateSingleTireAgePreview(idx);
+      }
+    };
+
+    function updateSingleTireAgePreview(idx) {
+      const el = document.getElementById(`tire-age-display-${idx}`);
+      if (!el) return;
+      const jenisUnit = document.getElementById("input-jenis-unit").value;
+      const metrics = evaluateTireMetrics(jenisUnit, appState.formTires[idx]);
+      const statusColor = metrics.status === "CRITICAL"
+        ? "bg-red-100 text-red-700 border-red-200"
+        : metrics.status === "WARNING"
+          ? "bg-amber-100 text-amber-800 border-amber-200"
+          : "bg-emerald-100 text-emerald-700 border-emerald-200";
+      el.innerHTML = `${metrics.umur.toLocaleString('id-ID')} ${metrics.skalaShort} <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] border ${statusColor}">${metrics.pct}% (${metrics.statusLabel})</span>`;
+    }
+
+    window.copyTireDetailsToAll = (sourceIdx) => {
+      const src = appState.formTires[sourceIdx];
+      if (!src) return;
+      appState.formTires.forEach((target, i) => {
+        if (i !== sourceIdx) {
+          target.jenis = src.jenis;
+          target.merk = src.merk;
+          target.ukuran = src.ukuran;
+          target.tglInstal = src.tglInstal;
+          target.hmPasang = src.hmPasang;
+          target.hmUpdate = src.hmUpdate;
+          target.kondisi = src.kondisi;
+        }
+      });
+      renderTireSlotsForm();
+      showToast(`Detail Ban #${sourceIdx + 1} disalin ke semua ${appState.formTires.length} ban (tanpa foto).`, "success");
+    };
+
+    window.copyTireDetailsToNext = (sourceIdx) => {
+      const nextIdx = sourceIdx + 1;
+      if (nextIdx >= appState.formTires.length) {
+        showToast("Ini sudah ban terakhir pada unit ini.", "info");
+        return;
+      }
+      const src = appState.formTires[sourceIdx];
+      const target = appState.formTires[nextIdx];
+      target.jenis = src.jenis;
+      target.merk = src.merk;
+      target.ukuran = src.ukuran;
+      target.tglInstal = src.tglInstal;
+      target.hmPasang = src.hmPasang;
+      target.hmUpdate = src.hmUpdate;
+      target.kondisi = src.kondisi;
+      renderTireSlotsForm();
+      showToast(`Detail Ban #${sourceIdx + 1} disalin ke Ban #${nextIdx + 1} (tanpa foto).`, "success");
+    };
+
+    function compressImageToDataURL(fileOrCanvas, maxDim = 560, quality = 0.68) {
+      return new Promise((resolve) => {
+        if (fileOrCanvas instanceof HTMLCanvasElement) {
+          resolve(fileOrCanvas.toDataURL("image/jpeg", quality));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            let w = img.width;
+            let h = img.height;
+            if (w > maxDim || h > maxDim) {
+              if (w > h) {
+                h = Math.round((h * maxDim) / w);
+                w = maxDim;
+              } else {
+                w = Math.round((w * maxDim) / h);
+                h = maxDim;
+              }
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL("image/jpeg", quality));
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(fileOrCanvas);
+      });
+    }
+
+    window.handleImageFileSelect = async (event, idx) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const compressed = await compressImageToDataURL(file);
+      appState.formTires[idx].photo = compressed;
+      renderTireSlotsForm();
+      showToast(`Foto Ban #${idx + 1} berhasil dilampirkan.`, "success");
+    };
+
+    window.removeTirePhoto = (idx) => {
+      appState.formTires[idx].photo = "";
+      renderTireSlotsForm();
+    };
+
+    window.triggerRealtimeCamera = async (idx) => {
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobile) {
+        document.getElementById(`cam-capture-input-${idx}`).click();
+        return;
+      }
+
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          appState.activeCameraSlot = idx;
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+          appState.cameraStream = stream;
+          const video = document.getElementById("camera-video");
+          video.srcObject = stream;
+          const modal = document.getElementById("camera-modal");
+          modal.classList.remove("hidden");
+          modal.classList.add("flex");
+        } catch (err) {
+          document.getElementById(`cam-capture-input-${idx}`).click();
+        }
+      } else {
+        document.getElementById(`cam-capture-input-${idx}`).click();
+      }
+    };
+
+    window.closeCameraModal = () => {
+      if (appState.cameraStream) {
+        appState.cameraStream.getTracks().forEach(t => t.stop());
+        appState.cameraStream = null;
+      }
+      const modal = document.getElementById("camera-modal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    };
+
+    window.captureFromCamera = async () => {
+      const video = document.getElementById("camera-video");
+      const idx = appState.activeCameraSlot;
+      if (!video || idx === null) return;
+
+      const canvas = document.createElement("canvas");
+      const maxDim = 560;
+      let w = video.videoWidth || 640;
+      let h = video.videoHeight || 480;
+      if (w > maxDim || h > maxDim) {
+        if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+        else { w = Math.round((w * maxDim) / h); h = maxDim; }
+      }
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d").drawImage(video, 0, 0, w, h);
+
+      appState.formTires[idx].photo = canvas.toDataURL("image/jpeg", 0.7);
+      closeCameraModal();
+      renderTireSlotsForm();
+      showToast(`Foto real-time Ban #${idx + 1} berhasil diambil!`, "success");
+    };
+
+    window.saveUnitTireData = async (e) => {
+      e.preventDefault();
+      if (appState.currentUser.role === "VIEWER") {
+        showToast("Viewer tidak memiliki izin menyimpan data.", "error");
+        return;
+      }
+
+      const kodeProyek = document.getElementById("input-kode-proyek").value.trim().toUpperCase();
+      const kodeAsset = document.getElementById("input-kode-asset").value.trim().toUpperCase();
+      const jenisUnit = document.getElementById("input-jenis-unit").value.trim().toUpperCase();
+      const merkUnit = document.getElementById("input-merk-unit").value.trim();
+      const jumlahBan = parseInt(document.getElementById("input-jumlah-ban").value, 10) || appState.formTires.length;
+      const unitHmKm = Number(document.getElementById("input-unit-hm").value) || 0;
+
+      const existingId = document.getElementById("edit-record-id").value;
+      const recordId = existingId || `rec_${kodeProyek.replace(/[^A-Z0-9]/g, "_")}_${Date.now()}`;
+
+      const recordObj = {
+        id: recordId,
+        kodeProyek,
+        kodeAsset,
+        jenisUnit,
+        merkUnit,
+        jumlahBan,
+        unitHmKm,
+        tires: JSON.parse(JSON.stringify(appState.formTires)),
+        updatedBy: appState.currentUser.email,
+        updatedAt: Date.now()
+      };
+
+      const idx = appState.records.findIndex(r => r.id === recordId);
+      if (idx >= 0) {
+        appState.records[idx] = recordObj;
+      } else {
+        appState.records.unshift(recordObj);
+      }
+
+      await persistRecordToCloud(recordObj);
+      refreshAllViews();
+      switchTab("rekap");
+      showToast(`Data ban unit ${kodeProyek} (${jumlahBan} ban) berhasil disimpan & disinkronkan!`, "success");
+    };
+
+    window.editUnitRecord = (recordId, stayOnTab = false) => {
+      if (appState.currentUser.role === "VIEWER") {
+        showToast("Akses Pelihat (Viewer) hanya dapat melihat data.", "error");
+        return;
+      }
+      const rec = appState.records.find(r => r.id === recordId);
+      if (!rec) return;
+
+      document.getElementById("edit-record-id").value = rec.id;
+      document.getElementById("form-page-title").textContent = `Update Data Ban — ${rec.kodeProyek} (${rec.kodeAsset})`;
+      document.getElementById("input-kode-proyek").value = rec.kodeProyek;
+      document.getElementById("input-kode-asset").value = rec.kodeAsset;
+      document.getElementById("input-jenis-unit").value = rec.jenisUnit;
+      document.getElementById("input-merk-unit").value = rec.merkUnit;
+      document.getElementById("input-jumlah-ban").value = rec.jumlahBan;
+      document.getElementById("input-unit-hm").value = rec.unitHmKm;
+
+      const scale = getDefaultScaleForUnitType(rec.jenisUnit);
+      document.getElementById("unit-scale-badge").textContent = scale === "Kilometer" ? "KM" : "HM";
+
+      appState.formTires = JSON.parse(JSON.stringify(rec.tires || []));
+      document.getElementById("slot-count-label").textContent = appState.formTires.length;
+      renderTireSlotsForm();
+
+      if (!stayOnTab) switchTab("input");
+    };
+
+    window.deleteUnitRecord = async (recordId, kodeProyek) => {
+      if (appState.currentUser.role !== "OWNER") {
+        showToast("Hanya Pemilik (saubariahmad.wsc@gmail.com) yang dapat menghapus data unit.", "error");
+        return;
+      }
+      const ok = await showConfirm("Hapus Data Rekap Unit", `Yakin ingin menghapus seluruh rekap ban untuk unit ${kodeProyek}?`);
+      if (!ok) return;
+
+      appState.records = appState.records.filter(r => r.id !== recordId);
+      await deleteRecordFromCloud(recordId);
+      refreshAllViews();
+      showToast(`Rekap unit ${kodeProyek} dihapus.`, "info");
+    };
+
+    // =========================================================================
+    // 8. RENDER DASHBOARD, REKAP, MASTER & SETTINGS
+    // =========================================================================
+    window.filterPlanningStatus = (status) => {
+      document.getElementById("planning-status-filter").value = status;
+      renderDashboard();
+      document.getElementById("planning-table-body").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    };
+
+    window.renderDashboard = () => {
+      let totalTires = 0;
+      let criticalTires = 0, warningTires = 0, okTires = 0;
+      const criticalUnits = new Set();
+      const warningUnits = new Set();
+      const okUnits = new Set();
+      const allTireRows = [];
+
+      appState.records.forEach(rec => {
+        let unitHasCritical = false;
+        let unitHasWarning = false;
+
+        (rec.tires || []).forEach(tire => {
+          totalTires++;
+          const m = evaluateTireMetrics(rec.jenisUnit, tire);
+          if (m.status === "CRITICAL") {
+            criticalTires++;
+            unitHasCritical = true;
+          } else if (m.status === "WARNING") {
+            warningTires++;
+            unitHasWarning = true;
+          } else {
+            okTires++;
+          }
+
+          allTireRows.push({ rec, tire, metrics: m });
+        });
+
+        if (unitHasCritical) criticalUnits.add(rec.id);
+        else if (unitHasWarning) warningUnits.add(rec.id);
+        else okUnits.add(rec.id);
+      });
+
+      const totalStockQty = appState.stocks.reduce((sum, s) => sum + (Number(s.qty) || 0), 0);
+      const activeVariants = appState.stocks.filter(s => (Number(s.qty) || 0) > 0).length;
+
+      document.getElementById("kpi-total-master").textContent = MASTER_EQUIPMENT.length;
+      document.getElementById("kpi-monitored-units").textContent = appState.records.length;
+      document.getElementById("kpi-total-tires").textContent = totalTires;
+      document.getElementById("kpi-warehouse-stock").textContent = totalStockQty.toLocaleString('id-ID');
+      document.getElementById("kpi-warehouse-variants").textContent = activeVariants;
+      document.getElementById("kpi-critical-units").textContent = criticalUnits.size;
+      document.getElementById("kpi-critical-tires").textContent = criticalTires;
+      document.getElementById("kpi-warning-units").textContent = warningUnits.size;
+      document.getElementById("kpi-warning-tires").textContent = warningTires;
+      document.getElementById("kpi-ok-units").textContent = okUnits.size;
+      document.getElementById("kpi-ok-tires").textContent = okTires;
+
+      const statusFilter = document.getElementById("planning-status-filter").value;
+      const searchQ = (document.getElementById("planning-search").value || "").toLowerCase();
+
+      const filteredRows = allTireRows
+        .filter(item => {
+          if (statusFilter !== "ALL" && item.metrics.status !== statusFilter) return false;
+          if (searchQ) {
+            const hay = `${item.rec.kodeProyek} ${item.rec.kodeAsset} ${item.rec.jenisUnit} ${item.tire.merk} ${item.tire.ukuran}`.toLowerCase();
+            if (!hay.includes(searchQ)) return false;
+          }
+          return true;
+        })
+        .sort((a, b) => b.metrics.pct - a.metrics.pct);
+
+      const tbody = document.getElementById("planning-table-body");
+      if (filteredRows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="py-8 text-center text-slate-400">Tidak ada data ban yang sesuai filter saat ini.</td></tr>`;
+      } else {
+        tbody.innerHTML = filteredRows.map(({ rec, tire, metrics }) => {
+          const badgeClass = metrics.status === "CRITICAL"
+            ? "bg-red-100 text-red-700 border-red-200"
+            : metrics.status === "WARNING"
+              ? "bg-amber-100 text-amber-800 border-amber-200"
+              : "bg-emerald-100 text-emerald-700 border-emerald-200";
+          const barColor = metrics.status === "CRITICAL" ? "bg-red-500" : metrics.status === "WARNING" ? "bg-amber-500" : "bg-emerald-500";
+          const canEdit = appState.currentUser.role !== "VIEWER";
+          const stockAvail = getAvailableStockForSpec(tire.ukuran, tire.jenis);
+
+          return `
+            <tr class="hover:bg-slate-50 transition">
+              <td class="py-3 px-4 font-extrabold text-slate-900">${rec.kodeProyek}<div class="text-[10px] font-medium text-slate-400">${rec.kodeAsset}</div></td>
+              <td class="py-3 px-4"><div class="font-bold text-slate-800">${rec.jenisUnit}</div><div class="text-[11px] text-slate-500 truncate max-w-[160px]">${rec.merkUnit}</div></td>
+              <td class="py-3 px-4 font-semibold text-slate-700">${tire.pos}</td>
+              <td class="py-3 px-4"><span class="font-bold text-slate-800">${tire.ukuran}</span><div class="text-[11px] text-slate-500">${tire.merk} • ${tire.jenis}</div></td>
+              <td class="py-3 px-4">
+                <button onclick="switchTab('stock')" class="px-2 py-0.5 rounded-md text-[11px] font-bold ${stockAvail > 0 ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-500'}">
+                  ${stockAvail} Pcs
+                </button>
+              </td>
+              <td class="py-3 px-4 font-semibold text-slate-700">${metrics.umur.toLocaleString('id-ID')} / ${metrics.interval.toLocaleString('id-ID')} ${metrics.skalaShort}</td>
+              <td class="py-3 px-4 w-28">
+                <div class="flex items-center justify-between text-[11px] font-bold mb-1">
+                  <span>${metrics.pct}%</span>
+                </div>
+                <div class="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div class="h-full ${barColor}" style="width: ${Math.min(100, metrics.pct)}%"></div>
+                </div>
+              </td>
+              <td class="py-3 px-4">
+                <span class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${badgeClass}">${metrics.statusLabel}</span>
+              </td>
+              <td class="py-3 px-4 text-right">
+                ${canEdit ? `<button onclick="editUnitRecord('${rec.id}')" class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-700 text-white text-[11px] font-semibold">Update</button>` : `<span class="text-[11px] text-slate-400">View Only</span>`}
+              </td>
+            </tr>
+          `;
+        }).join("");
+      }
+
+      document.getElementById("standard-table-preview").innerHTML = appState.standards.map(s => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-2 px-4 font-bold text-slate-800">${s.jenis}</td>
+          <td class="py-2 px-4 font-semibold text-slate-700">${s.ukuran}</td>
+          <td class="py-2 px-4 text-slate-600">${s.merk}</td>
+          <td class="py-2 px-4 text-slate-600">${s.tread}</td>
+          <td class="py-2 px-4 text-right font-extrabold text-slate-900">${Number(s.interval).toLocaleString('id-ID')}</td>
+          <td class="py-2 px-4"><span class="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold text-[11px]">${s.skala}</span></td>
+        </tr>
+      `).join("");
+    };
+
+    window.renderRekapList = () => {
+      const searchQ = (document.getElementById("rekap-search").value || "").toLowerCase();
+      const jenisFilter = document.getElementById("rekap-jenis-filter").value;
+      const container = document.getElementById("rekap-units-container");
+
+      const filtered = appState.records.filter(rec => {
+        if (jenisFilter && rec.jenisUnit !== jenisFilter) return false;
+        if (searchQ) {
+          const hay = `${rec.kodeProyek} ${rec.kodeAsset} ${rec.jenisUnit} ${rec.merkUnit}`.toLowerCase();
+          if (!hay.includes(searchQ)) return false;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white rounded-2xl p-10 border border-slate-200 text-center space-y-3">
+            <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto"><i data-lucide="folder-search" class="w-6 h-6"></i></div>
+            <h3 class="text-base font-bold text-slate-800">Belum Ada Data Unit Ditemukan</h3>
+            <p class="text-xs text-slate-500 max-w-md mx-auto">Silakan tambahkan data inspeksi ban unit baru atau ubah kata kunci pencarian Anda.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      const canEdit = appState.currentUser.role !== "VIEWER";
+      const isOwner = appState.currentUser.role === "OWNER";
+
+      container.innerHTML = filtered.map(rec => {
+        const tires = rec.tires || [];
+        let critCount = 0, warnCount = 0;
+        tires.forEach(t => {
+          const m = evaluateTireMetrics(rec.jenisUnit, t);
+          if (m.status === "CRITICAL") critCount++;
+          else if (m.status === "WARNING") warnCount++;
+        });
+
+        const updatedDate = rec.updatedAt ? new Date(rec.updatedAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : "-";
+
+        return `
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-4 sm:p-5 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div class="space-y-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-amber-400 font-extrabold text-xs">${rec.kodeProyek}</span>
+                  <span class="px-2.5 py-1 rounded-lg bg-slate-200 text-slate-800 font-bold text-xs">${rec.kodeAsset}</span>
+                  <span class="text-sm font-extrabold text-slate-900">${rec.jenisUnit}</span>
+                  ${critCount > 0 ? `<span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[11px] font-bold">🔴 ${critCount} Wajib Ganti</span>` : ""}
+                  ${warnCount > 0 ? `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold">🟡 ${warnCount} Mendekati</span>` : ""}
+                </div>
+                <div class="text-xs text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span><strong>Merk:</strong> ${rec.merkUnit}</span>
+                  <span><strong>Jumlah Ban:</strong> ${rec.jumlahBan} Ban</span>
+                  <span><strong>HM/KM Unit:</strong> <span class="text-blue-700 font-bold">${Number(rec.unitHmKm).toLocaleString('id-ID')}</span></span>
+                  <span class="text-[11px] text-slate-400">Update: ${updatedDate} (${rec.updatedBy || "-"})</span>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 shrink-0">
+                ${canEdit ? `
+                  <button onclick="editUnitRecord('${rec.id}')" class="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+                    <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Edit / Update Ban
+                  </button>
+                ` : ""}
+                ${isOwner ? `
+                  <button onclick="deleteUnitRecord('${rec.id}', '${rec.kodeProyek}')" class="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition" title="Hapus Unit">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                  </button>
+                ` : ""}
+              </div>
+            </div>
+
+            <div class="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+              ${tires.map(tire => {
+                const m = evaluateTireMetrics(rec.jenisUnit, tire);
+                const borderCol = m.status === "CRITICAL" ? "border-red-300 bg-red-50/30" : m.status === "WARNING" ? "border-amber-300 bg-amber-50/30" : "border-slate-200 bg-white";
+                const badgeCol = m.status === "CRITICAL" ? "bg-red-600 text-white" : m.status === "WARNING" ? "bg-amber-500 text-slate-950" : "bg-emerald-600 text-white";
+
+                return `
+                  <div class="rounded-xl border ${borderCol} p-3 flex flex-col justify-between gap-2.5">
+                    <div>
+                      <div class="flex items-center justify-between gap-1 mb-1.5">
+                        <span class="font-extrabold text-xs text-slate-900 truncate">${tire.pos}</span>
+                        <span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold ${badgeCol}">${m.statusLabel}</span>
+                      </div>
+
+                      <div class="w-full h-24 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden mb-2 flex items-center justify-center">
+                        ${tire.photo
+                          ? `<img src="${tire.photo}" onclick="openLightbox('${tire.photo}', '${rec.kodeProyek} — ${tire.pos}', '${tire.merk} | ${tire.ukuran} | Umur: ${m.umur} ${m.skalaShort}')" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition" alt="Foto Ban" />`
+                          : `<div class="text-center text-slate-400"><i data-lucide="image-off" class="w-5 h-5 mx-auto mb-0.5"></i><span class="text-[10px]">Belum ada foto</span></div>`
+                        }
+                      </div>
+
+                      <div class="space-y-1 text-[11px] text-slate-600">
+                        <div class="flex justify-between"><span>Merk:</span> <strong class="text-slate-800">${tire.merk}</strong></div>
+                        <div class="flex justify-between"><span>Jenis/Ukuran:</span> <strong class="text-slate-800">${tire.jenis} / ${tire.ukuran}</strong></div>
+                        <div class="flex justify-between"><span>Tgl Instal:</span> <span>${tire.tglInstal || "-"}</span></div>
+                        <div class="flex justify-between"><span>HM/KM Pasang:</span> <span>${Number(tire.hmPasang).toLocaleString('id-ID')}</span></div>
+                        <div class="flex justify-between"><span>Umur Ban:</span> <strong class="text-blue-700">${m.umur.toLocaleString('id-ID')} ${m.skalaShort} (${m.pct}%)</strong></div>
+                        <div class="flex justify-between"><span>Kondisi:</span> <strong class="text-slate-800">${tire.kondisi}</strong></div>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      lucide.createIcons();
+    };
+
+    window.renderMasterTable = () => {
+      const q = (document.getElementById("master-search").value || "").toLowerCase();
+      const monitoredMap = new Map(appState.records.map(r => [r.kodeProyek.toUpperCase(), r]));
+      const canEdit = appState.currentUser.role !== "VIEWER";
+
+      const filtered = MASTER_EQUIPMENT.filter(item => {
+        if (!q) return true;
+        return `${item["Kode Proyek"]} ${item["Kode Asset"]} ${item["Jenis"]} ${item["Merk"]}`.toLowerCase().includes(q);
+      });
+
+      document.getElementById("master-table-body").innerHTML = filtered.map((item, idx) => {
+        const kp = item["Kode Proyek"];
+        const rec = monitoredMap.get(kp.toUpperCase());
+        const tireCount = getTireCountForUnitType(item["Jenis"]);
+
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-2.5 px-4 text-slate-400 font-medium">${idx + 1}</td>
+            <td class="py-2.5 px-4 font-extrabold text-slate-900">${kp}</td>
+            <td class="py-2.5 px-4 font-semibold text-slate-700">${item["Kode Asset"]}</td>
+            <td class="py-2.5 px-4 font-bold text-slate-800">${item["Jenis"]}</td>
+            <td class="py-2.5 px-4 text-slate-600">${item["Merk"]}</td>
+            <td class="py-2.5 px-4 text-center"><span class="px-2 py-0.5 rounded-md bg-slate-100 font-bold text-slate-800">${tireCount}</span></td>
+            <td class="py-2.5 px-4">
+              ${rec
+                ? `<span class="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[11px]">✓ Terdata (${rec.tires?.length || 0} ban)</span>`
+                : `<span class="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium text-[11px]">Belum diinput</span>`
+              }
+            </td>
+            <td class="py-2.5 px-4 text-right">
+              ${canEdit ? `
+                <button onclick="${rec ? `editUnitRecord('${rec.id}')` : `startNewInput('${kp}')`}" class="px-3 py-1.5 rounded-lg ${rec ? 'bg-slate-800 text-white' : 'bg-amber-500 text-slate-950'} text-[11px] font-bold hover:opacity-90">
+                  ${rec ? 'Update Ban' : '+ Input Ban'}
+                </button>
+              ` : `<span class="text-[11px] text-slate-400">-</span>`}
+            </td>
+          </tr>
+        `;
+      }).join("");
+    };
+
+    window.renderSettingsTab = () => {
+      const isOwner = appState.currentUser.role === "OWNER";
+
+      document.getElementById("permissions-table-body").innerHTML = appState.permissions.map(p => {
+        const badge = p.role === "OWNER"
+          ? `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-extrabold text-[10px]">PEMILIK (FULL AKSES)</span>`
+          : p.role === "EDITOR"
+            ? `<span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold text-[10px]">AKSES TERBATAS (EDITOR)</span>`
+            : `<span class="px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-bold text-[10px]">AKSES PELIHAT (VIEWER)</span>`;
+
+        return `
+          <tr>
+            <td class="py-2.5 px-4 font-bold text-slate-900">${p.email}</td>
+            <td class="py-2.5 px-4">${badge}</td>
+            <td class="py-2.5 px-4 text-slate-600">${p.note || "-"}</td>
+            <td class="py-2.5 px-4 text-right">
+              ${(isOwner && p.email.toLowerCase() !== OWNER_EMAIL)
+                ? `<button onclick="removeUserPermission('${p.email}')" class="text-red-600 hover:underline font-semibold text-[11px]">Hapus Akses</button>`
+                : `<span class="text-[11px] text-slate-400">Default</span>`
+              }
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      document.getElementById("settings-standards-body").innerHTML = appState.standards.map(s => `
+        <tr>
+          <td class="py-2 px-4 font-bold text-slate-800">${s.jenis}</td>
+          <td class="py-2 px-4 font-semibold">${s.ukuran}</td>
+          <td class="py-2 px-4">${s.merk}</td>
+          <td class="py-2 px-4">${s.tread}</td>
+          <td class="py-2 px-4 text-right font-extrabold">${Number(s.interval).toLocaleString('id-ID')}</td>
+          <td class="py-2 px-4">${s.skala}</td>
+          <td class="py-2 px-4 text-right">
+            ${isOwner ? `<button onclick="deletePlanningStandard('${s.id}')" class="text-red-600 hover:underline text-[11px] font-semibold">Hapus</button>` : "-"}
+          </td>
+        </tr>
+      `).join("");
+    };
+
+    window.addPlanningStandard = async (e) => {
+      e.preventDefault();
+      if (appState.currentUser.role !== "OWNER") return;
+      const newStd = {
+        id: `std_${Date.now()}`,
+        jenis: document.getElementById("std-jenis").value.trim(),
+        ukuran: document.getElementById("std-ukuran").value.trim(),
+        merk: document.getElementById("std-merk").value.trim(),
+        tread: document.getElementById("std-tread").value.trim(),
+        interval: Number(document.getElementById("std-interval").value) || 3000,
+        skala: document.getElementById("std-skala").value
+      };
+      appState.standards.push(newStd);
+      await persistStandardToCloud(newStd);
+      e.target.reset();
+      refreshAllViews();
+      showToast("Standar interval ban berhasil ditambahkan.", "success");
+    };
+
+    window.deletePlanningStandard = async (id) => {
+      if (appState.currentUser.role !== "OWNER") return;
+      appState.standards = appState.standards.filter(s => s.id !== id);
+      await deleteStandardFromCloud(id);
+      refreshAllViews();
+      showToast("Standar interval dihapus.", "info");
+    };
+
+    function refreshAllViews() {
+      renderDashboard();
+      renderRekapList();
+      renderStockTab();
+      renderMasterTable();
+      renderSettingsTab();
+      lucide.createIcons();
+    }
+
+    // =========================================================================
+    // 9. EXCEL EXPORT (.XLSX) & GOOGLE DRIVE JSON BACKUP / RESTORE
+    // =========================================================================
+    window.exportToExcel = () => {
+      if (typeof XLSX === "undefined") {
+        showToast("Library Excel sedang dimuat, coba sesaat lagi.", "error");
+        return;
+      }
+
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: Rekap Per Unit
+      const unitRows = appState.records.map((rec, idx) => {
+        const tires = rec.tires || [];
+        let crit = 0, warn = 0, ok = 0;
+        tires.forEach(t => {
+          const m = evaluateTireMetrics(rec.jenisUnit, t);
+          if (m.status === "CRITICAL") crit++;
+          else if (m.status === "WARNING") warn++;
+          else ok++;
+        });
+        return {
+          "No": idx + 1,
+          "Code Proyek": rec.kodeProyek,
+          "Kode Asset": rec.kodeAsset,
+          "Jenis Unit": rec.jenisUnit,
+          "Merk Unit": rec.merkUnit,
+          "Jumlah Ban": rec.jumlahBan,
+          "HM/KM Terbaru Unit": rec.unitHmKm,
+          "Ban Wajib Ganti": crit,
+          "Ban Mendekati Ganti": warn,
+          "Ban Kondisi Aman": ok,
+          "Terakhir Update": rec.updatedAt ? new Date(rec.updatedAt).toLocaleString('id-ID') : "-",
+          "Diupdate Oleh": rec.updatedBy || "-"
+        };
+      });
+      const wsUnits = XLSX.utils.json_to_sheet(unitRows.length ? unitRows : [{ Info: "Belum ada data unit terinput" }]);
+      XLSX.utils.book_append_sheet(wb, wsUnits, "Rekap Per Unit");
+
+      // Sheet 2: Detail Seluruh Ban & Status Planning
+      const tireRows = [];
+      appState.records.forEach(rec => {
+        (rec.tires || []).forEach((t, i) => {
+          const m = evaluateTireMetrics(rec.jenisUnit, t);
+          tireRows.push({
+            "Code Proyek": rec.kodeProyek,
+            "Kode Asset": rec.kodeAsset,
+            "Jenis Unit": rec.jenisUnit,
+            "Merk Unit": rec.merkUnit,
+            "No Ban": i + 1,
+            "Posisi Ban": t.pos,
+            "Jenis / Tread": t.jenis,
+            "Merk Ban": t.merk,
+            "Ukuran Ban": t.ukuran,
+            "Tanggal Instal": t.tglInstal,
+            "HM/KM Pasang": Number(t.hmPasang) || 0,
+            "HM/KM Update Terbaru": Number(t.hmUpdate) || 0,
+            "Umur Ban": m.umur,
+            "Satuan": m.skalaShort,
+            "Standar Interval": m.interval,
+            "Persentase Pakai (%)": m.pct,
+            "Status Planning": m.statusLabel,
+            "Kondisi Fisik": t.kondisi,
+            "Status Foto": t.photo ? "Ada Foto Terlampir" : "Belum Ada Foto"
+          });
+        });
+      });
+      const wsTires = XLSX.utils.json_to_sheet(tireRows.length ? tireRows : [{ Info: "Belum ada detail ban" }]);
+      XLSX.utils.book_append_sheet(wb, wsTires, "Detail Ban & Planning");
+
+      // Sheet 3: Stock Ban Gudang
+      const stockRows = appState.stocks.map((s, idx) => ({
+        "No": idx + 1,
+        "Jenis Ban": s.jenis,
+        "Merk Ban": s.merk,
+        "Ukuran Ban": s.ukuran,
+        "Tahun Pembuatan": s.tahunPembuatan,
+        "Stock Tersedia (Pcs)": Number(s.qty) || 0,
+        "Lokasi / Keterangan": s.lokasi || "-",
+        "Terakhir Update": s.updatedAt ? new Date(s.updatedAt).toLocaleString('id-ID') : "-",
+        "Diupdate Oleh": s.updatedBy || "-"
+      }));
+      const wsStocks = XLSX.utils.json_to_sheet(stockRows.length ? stockRows : [{ Info: "Belum ada stock ban" }]);
+      XLSX.utils.book_append_sheet(wb, wsStocks, "Stock Ban");
+
+      // Sheet 4: Riwayat Mutasi Stock
+      const logRows = appState.stockLogs.map((l, idx) => ({
+        "No": idx + 1,
+        "Waktu Transaksi": l.timestamp ? new Date(l.timestamp).toLocaleString('id-ID') : "-",
+        "Jenis Transaksi": l.type,
+        "Jenis Ban": l.jenis,
+        "Merk Ban": l.merk,
+        "Ukuran Ban": l.ukuran,
+        "Tahun Pembuatan": l.tahunPembuatan,
+        "Jumlah Perubahan": l.type === "MASUK" ? `+${l.qtyChange}` : `-${l.qtyChange}`,
+        "Sisa Stock (Pcs)": l.remainingQty,
+        "Keterangan": l.note || "-",
+        "Petugas / User": l.user || "-"
+      }));
+      const wsLogs = XLSX.utils.json_to_sheet(logRows.length ? logRows : [{ Info: "Belum ada mutasi stock" }]);
+      XLSX.utils.book_append_sheet(wb, wsLogs, "Mutasi Stock");
+
+      // Sheet 5: Standar Interval Planning
+      const stdRows = appState.standards.map(s => ({
+        "Jenis Unit": s.jenis,
+        "Ukuran": s.ukuran,
+        "Merk": s.merk,
+        "Tread": s.tread,
+        "Interval": s.interval,
+        "Skala": s.skala
+      }));
+      const wsStd = XLSX.utils.json_to_sheet(stdRows);
+      XLSX.utils.book_append_sheet(wb, wsStd, "Standar Interval");
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `Rekap_Planning_Stock_Ban_WSC_${dateStr}.xlsx`);
+      showToast("File Excel (termasuk Stock Ban & Mutasi) berhasil didownload!", "success");
+    };
+
+    window.exportBackupJSON = () => {
+      const payload = {
+        app: "Planning and Monitoring Tyre",
+        owner: OWNER_EMAIL,
+        exportedAt: new Date().toISOString(),
+        records: appState.records,
+        stocks: appState.stocks,
+        stockLogs: appState.stockLogs,
+        standards: appState.standards,
+        permissions: appState.permissions
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Backup_Database_Ban_WSC_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Backup JSON (termasuk Stock Ban) diunduh. Simpan ke Google Drive saubariahmad.wsc@gmail.com.", "success");
+    };
+
+    window.importBackupJSON = (event) => {
+      if (appState.currentUser.role !== "OWNER") {
+        showToast("Hanya Pemilik yang dapat melakukan Restore database.", "error");
+        return;
+      }
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (Array.isArray(parsed.records)) {
+            appState.records = parsed.records;
+            for (const r of parsed.records) await persistRecordToCloud(r);
+          }
+          if (Array.isArray(parsed.stocks)) {
+            appState.stocks = parsed.stocks;
+            for (const st of parsed.stocks) await persistStockToCloud(st);
+          }
+          if (Array.isArray(parsed.stockLogs)) {
+            appState.stockLogs = parsed.stockLogs;
+            for (const lg of parsed.stockLogs) await persistStockLogToCloud(lg);
+          }
+          if (Array.isArray(parsed.standards)) {
+            appState.standards = parsed.standards;
+            for (const s of parsed.standards) await persistStandardToCloud(s);
+          }
+          refreshAllViews();
+          showToast("Restore database dari file backup berhasil!", "success");
+        } catch (err) {
+          showToast("Format file JSON tidak valid.", "error");
+        }
+      };
+      reader.readAsText(file);
+    };
+
+    // =========================================================================
+    // 10. INITIALIZATION ON WINDOW LOAD
+    // =========================================================================
+    window.addEventListener("DOMContentLoaded", () => {
+      populateProjectDatalist();
+      populateStockDatalists();
+      resetUnitForm();
+      recomputeCurrentUserRole();
+      switchTab("dashboard");
+      refreshAllViews();
+      initCloudSync();
+    });
+  </script>
+</body>
+</html>
